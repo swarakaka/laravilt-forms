@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Laravilt\Forms\Http\Controllers\FileUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,10 +14,11 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware(['web'])->group(function () {
-    // Add your web routes here
-    // Example:
-    // Route::get('/forms', function () {
-    //     return view('forms::index');
-    // });
-});
+Route::prefix('uploads')
+    ->name('uploads.')
+    ->group(function () {
+        Route::post('/', [FileUploadController::class, 'upload'])->name('upload');
+        Route::delete('/', [FileUploadController::class, 'delete'])->name('delete');
+        Route::post('/temporary-url', [FileUploadController::class, 'temporaryUrl'])->name('temporary-url');
+        Route::get('/private', [FileUploadController::class, 'servePrivate'])->name('private');
+    });

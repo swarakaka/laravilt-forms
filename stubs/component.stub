@@ -1,0 +1,33 @@
+<?php
+
+namespace {{ namespace }};
+
+use Laravilt\Forms\Components\Field;
+
+/**
+ * {{ class }} Component
+ *
+ * Custom form field component.
+ */
+class {{ class }} extends Field
+{
+    protected string $view = 'forms.components.{{ componentKebab }}';
+
+    /**
+     * Configure the component.
+     */
+    protected function setUp(): void
+    {
+        // Configure your component here
+    }
+
+    /**
+     * Serialize component for Laravilt (Blade + Vue.js).
+     */
+    public function toLaraviltProps(): array
+    {
+        return array_merge(parent::toLaraviltProps(), [
+            // Add custom props here
+        ]);
+    }
+}

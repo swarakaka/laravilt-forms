@@ -1,7 +1,7 @@
 // Laravilt Forms - Main Entry Point
 
-// Import CSS
-import '../css/forms.css';
+// CSS is handled by the main app, no need to import here
+// import '../css/forms.css';
 
 // Export form renderer and field wrapper
 export { default as FormRenderer } from './components/FormRenderer.vue';

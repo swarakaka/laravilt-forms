@@ -60,6 +60,7 @@ const props = defineProps<{
     required?: boolean;
     disabled?: boolean;
     value?: boolean;
+    modelValue?: boolean;
     hidden?: boolean;
     columnSpan?: number | string;
     hintActions?: any[];
@@ -73,7 +74,7 @@ const emit = defineEmits<{
 }>();
 
 const toggleValue = computed({
-    get: () => props.value ?? false,
+    get: () => props.modelValue ?? props.value ?? false,
     set: (value) => emit('update:modelValue', value)
 });
 

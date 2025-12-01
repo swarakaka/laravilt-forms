@@ -19,9 +19,13 @@ const props = defineProps({
 // Get the current instance to access the app context
 const instance = getCurrentInstance();
 
-// Convert PascalCase to kebab-case (e.g., "TextInput" -> "text-input")
+// Convert PascalCase or snake_case to kebab-case
+// Examples: "TextInput" -> "text-input", "date_range_picker" -> "date-range-picker"
 const toKebabCase = (str) => {
-    return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    return str
+        .replace(/_/g, '-')  // Convert underscores to hyphens
+        .replace(/([a-z])([A-Z])/g, '$1-$2')  // Convert PascalCase
+        .toLowerCase();
 };
 
 // Resolve the component by name from the global components registry

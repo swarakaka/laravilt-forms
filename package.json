@@ -48,7 +48,11 @@
         "prepublishOnly": "npm run build:npm",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
-        "lint": "eslint . --fix"
+        "lint": "eslint . --fix",
+        "test": "npx playwright test",
+        "test:headed": "npx playwright test --headed",
+        "test:ui": "npx playwright test --ui",
+        "test:debug": "npx playwright test --debug"
     },
     "peerDependencies": {
         "@inertiajs/vue3": "^2.0.0",

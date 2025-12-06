@@ -14,6 +14,12 @@ class ToggleButtons extends Field
 
     protected bool $inline = true;
 
+    protected array|Closure $icons = [];
+
+    protected array|Closure $colors = [];
+
+    protected bool $grouped = false;
+
     /**
      * Set the available options.
      */
@@ -45,6 +51,64 @@ class ToggleButtons extends Field
     }
 
     /**
+     * Set icons for each option (FilamentPHP v4 compatibility).
+     *
+     * @param array|Closure $icons Map of option value => icon name
+     */
+    public function icons(array|Closure $icons): static
+    {
+        $this->icons = $icons;
+
+        return $this;
+    }
+
+    /**
+     * Set colors for each option (FilamentPHP v4 compatibility).
+     *
+     * @param array|Closure $colors Map of option value => color
+     */
+    public function colors(array|Closure $colors): static
+    {
+        $this->colors = $colors;
+
+        return $this;
+    }
+
+    /**
+     * Group buttons together (FilamentPHP v4 compatibility).
+     */
+    public function grouped(bool $condition = true): static
+    {
+        $this->grouped = $condition;
+
+        return $this;
+    }
+
+    /**
+     * Get the icons array.
+     */
+    protected function getIcons(): array
+    {
+        if ($this->icons instanceof Closure) {
+            return ($this->icons)();
+        }
+
+        return $this->icons;
+    }
+
+    /**
+     * Get the colors array.
+     */
+    protected function getColors(): array
+    {
+        if ($this->colors instanceof Closure) {
+            return ($this->colors)();
+        }
+
+        return $this->colors;
+    }
+
+    /**
      * Get the options array.
      */
     protected function getOptions(): array
@@ -62,18 +126,33 @@ class ToggleButtons extends Field
     protected function transformOptions(array $options): array
     {
         $transformed = [];
+        $icons = $this->getIcons();
+        $colors = $this->getColors();
 
         foreach ($options as $key => $value) {
             // If already in correct format (has 'value' and 'label' keys)
             if (is_array($value) && isset($value['value']) && isset($value['label'])) {
-                $transformed[] = $value;
+                $option = $value;
             } else {
                 // Transform key-value pairs to object format
-                $transformed[] = [
+                $option = [
                     'value' => $key,
                     'label' => $value,
                 ];
             }
+
+            // Add icon if specified
+            $optionValue = $option['value'] ?? $key;
+            if (isset($icons[$optionValue])) {
+                $option['icon'] = $icons[$optionValue];
+            }
+
+            // Add color if specified
+            if (isset($colors[$optionValue])) {
+                $option['color'] = $colors[$optionValue];
+            }
+
+            $transformed[] = $option;
         }
 
         return $transformed;
@@ -85,6 +164,7 @@ class ToggleButtons extends Field
             'options' => $this->transformOptions($this->getOptions()),
             'multiple' => $this->multiple,
             'inline' => $this->inline,
+            'grouped' => $this->grouped,
         ]);
     }
 }

@@ -32,18 +32,15 @@ const toKebabCase = (str) => {
 const resolvedComponent = computed(() => {
     const kebabName = toKebabCase(props.component);
     const componentName = `laravilt-${kebabName}`;
-    console.log('Trying to resolve component:', componentName, 'from', props.component);
 
     // Try to get the component from the app context
     const component = instance?.appContext.components[componentName];
 
     if (component) {
-        console.log('✓ Resolved component:', componentName);
         return component;
     }
 
     console.error(`Failed to resolve component: ${componentName}`);
-    console.log('Available components:', Object.keys(instance?.appContext.components || {}));
     return 'div'; // Fallback to div
 });
 

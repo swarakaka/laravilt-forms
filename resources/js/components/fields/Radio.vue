@@ -30,7 +30,7 @@
                 label
             }}</Label>
             <RadioGroup
-                :default-value="defaultValue"
+                v-model="radioValue"
                 :name="name"
                 :disabled="disabled"
                 :aria-invalid="hasError ? 'true' : 'false'"
@@ -82,6 +82,7 @@ const props = defineProps<{
     options?: Record<string, string>;
     descriptions?: Record<string, string>;
     defaultValue?: string;
+    value?: string;
     inline?: boolean;
     required?: boolean;
     disabled?: boolean;
@@ -90,6 +91,15 @@ const props = defineProps<{
     columnSpan?: number | string;
     hintActions?: any[];
 }>();
+
+const emit = defineEmits<{
+    'update:modelValue': [value: string];
+}>();
+
+const radioValue = computed({
+    get: () => props.value ?? props.defaultValue,
+    set: (value) => emit('update:modelValue', value)
+});
 
 // Inject errors from parent
 const errors = inject<ComputedRef<Record<string, string | string[]>>>(

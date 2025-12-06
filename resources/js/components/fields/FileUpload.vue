@@ -315,17 +315,10 @@ const normalizePath = (path?: string | null) => {
   return path.startsWith('/') ? path : `/${path}`
 }
 
-// Build upload URL from the current panel path so custom panel paths work
-const uploadUrl = computed(() => {
-  // Check if we have a panel context from Inertia
-  if (page?.props?.panel?.path) {
-    const panelPath = normalizePath(page.props.panel.path)
-    return `${panelPath}/uploads`
-  }
-
-  // Fallback to root uploads route (for standalone usage or demo)
-  return '/uploads'
-})
+// Upload URL is always at /uploads (global route from forms package)
+// Panel-specific upload routes are not used since the forms package
+// registers routes at the root level for all panels
+const uploadUrl = computed(() => '/uploads')
 
 const temporaryUrlEndpoint = computed(() => `${uploadUrl.value}/temporary-url`)
 

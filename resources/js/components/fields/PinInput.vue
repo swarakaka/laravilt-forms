@@ -11,6 +11,7 @@ interface Props {
   modelValue?: string | null
   label?: string
   helperText?: string
+  error?: string
   required?: boolean
   disabled?: boolean
   length?: number
@@ -97,14 +98,27 @@ const alignmentClasses = {
           v-for="(id, index) in length"
           :key="id"
           :index="index"
-          class="flex h-14 w-14 items-center justify-center rounded-lg border-2 border-input bg-background text-center text-lg font-semibold ring-offset-background transition-all duration-200 file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:border-primary/50 focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 data-[complete]:border-primary data-[complete]:bg-primary/5"
+          :class="[
+            'flex h-14 w-14 items-center justify-center rounded-lg border-2 bg-background text-center text-lg font-semibold ring-offset-background transition-all duration-200 file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+            error
+              ? 'border-destructive hover:border-destructive focus-visible:outline-none focus-visible:border-destructive focus-visible:ring-4 focus-visible:ring-destructive/10'
+              : 'border-input hover:border-primary/50 focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 data-[complete]:border-primary data-[complete]:bg-primary/5'
+          ]"
         />
       </PinInputRoot>
     </div>
 
+    <!-- Error message -->
+    <p
+      v-if="error"
+      :class="['text-xs text-destructive', alignmentClasses[align].text]"
+    >
+      {{ error }}
+    </p>
+
     <!-- Helper text -->
     <p
-      v-if="helperText"
+      v-else-if="helperText"
       :class="['text-xs text-muted-foreground', alignmentClasses[align].text]"
     >
       {{ helperText }}

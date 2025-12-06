@@ -139,8 +139,15 @@ trait HasValidation
         return $this->addRules("max:{$length}");
     }
 
-    public function unique(string $table, string $column = 'NULL', ?string $ignoreId = null): static
+    public function unique(?string $table = null, string $column = 'NULL', ?string $ignoreId = null): static
     {
+        // If called without params, just mark as unique (for frontend validation hint)
+        if ($table === null) {
+            $this->meta['unique'] = true;
+
+            return $this;
+        }
+
         if ($ignoreId) {
             return $this->addRules(Rule::unique($table, $column)->ignore($ignoreId));
         }

@@ -1,20 +1,35 @@
 <template>
     <form ref="formRef" :class="containerClass" @submit.prevent>
         <template v-for="(component, index) in internalSchema" :key="component.name || component.id || index">
-            <!-- Render action buttons with form data -->
+            <!-- Group consecutive actions together (only render on first action in group) -->
+            <div v-if="isAction(component) && !isPreviousItemAction(index) && isNextItemAction(index)" class="flex flex-wrap gap-2 items-start">
+                <FormActionButton
+                    v-bind="component"
+                    :getFormData="getFormData"
+                />
+                <template v-for="(nextComponent, nextIndex) in getConsecutiveActions(index)" :key="nextComponent.name || nextComponent.id || (index + nextIndex + 1)">
+                    <FormActionButton
+                        v-bind="nextComponent"
+                        :getFormData="getFormData"
+                    />
+                </template>
+            </div>
+
+            <!-- Render single action (not part of a group) -->
             <FormActionButton
-                v-if="isAction(component)"
+                v-else-if="isAction(component) && !isPreviousItemAction(index) && !isNextItemAction(index)"
                 v-bind="component"
                 :getFormData="getFormData"
             />
 
             <!-- Render regular form components -->
             <component
-                v-else
+                v-else-if="!isAction(component)"
                 :is="getComponent(component)"
                 v-bind="getComponentProps(component)"
                 :value="isSchemaComponent(component) ? undefined : internalFormData[component.name]"
                 :modelValue="isSchemaComponent(component) ? internalFormData : undefined"
+                :error="getError(component)"
                 @update:model-value="(value) => handleComponentUpdate(component, value)"
             />
         </template>
@@ -22,11 +37,23 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, onUnmounted, computed, h, ref, watch, provide, nextTick } from 'vue'
+import { defineAsyncComponent, onMounted, onUnmounted, computed, h, ref, watch, provide, inject, nextTick } from 'vue'
 import ActionButton from '@laravilt/actions/components/ActionButton.vue'
 
 const formRef = ref<HTMLFormElement | null>(null)
 const internalFormData = ref<Record<string, any>>({})
+
+// Local validation errors for client-side validation
+const localErrors = ref<Record<string, string>>({})
+
+// Inject errors from ErrorProvider (it's a computed ref)
+const injectedErrors = inject<any>('errors', {})
+
+// Merged errors: local client-side errors + server-side errors
+const errors = computed(() => {
+    const serverErrors = injectedErrors?.value || injectedErrors || {}
+    return { ...localErrors.value, ...serverErrors }
+})
 
 // Create a wrapper component for form actions that can collect form data
 const FormActionButton = {
@@ -295,20 +322,95 @@ const getFormData = () => {
     return { ...internalFormData.value }
 }
 
-// Validate the form using HTML5 validation
+// Extract required fields from schema recursively
+const extractRequiredFields = (schema: Array<any>): Array<{ name: string; label: string }> => {
+    const requiredFields: Array<{ name: string; label: string }> = []
+    const schemaComponentTypes = ['tabs', 'section', 'grid']
+
+    if (!schema || !Array.isArray(schema)) {
+        return requiredFields
+    }
+
+    for (const component of schema) {
+        // Skip actions
+        if (component.hasAction === true || (component.name && !component.component)) {
+            continue
+        }
+
+        // If it's a tabs component, extract from all tabs
+        if (component.component === 'tabs' && component.tabs && Array.isArray(component.tabs)) {
+            for (const tab of component.tabs) {
+                if (tab.schema && Array.isArray(tab.schema)) {
+                    requiredFields.push(...extractRequiredFields(tab.schema))
+                }
+            }
+            continue
+        }
+
+        // If it's a schema component (section, grid), recurse into its schema
+        if (schemaComponentTypes.includes(component.component) && component.schema && Array.isArray(component.schema)) {
+            requiredFields.push(...extractRequiredFields(component.schema))
+            continue
+        }
+
+        // If it has a name and is required, add to the list
+        if (component.name && component.required) {
+            requiredFields.push({
+                name: component.name,
+                label: component.label || component.name
+            })
+        }
+    }
+
+    return requiredFields
+}
+
+// Check if a value is empty (null, undefined, empty string, empty array)
+const isValueEmpty = (value: any): boolean => {
+    if (value === null || value === undefined) return true
+    if (typeof value === 'string' && value.trim() === '') return true
+    if (Array.isArray(value) && value.length === 0) return true
+    return false
+}
+
+// Validate the form - combines HTML5 validation with custom required field checks
 const validateForm = () => {
-    if (!formRef.value) {
-        return true
+    // Clear previous local validation errors
+    localErrors.value = {}
+
+    // Get all required fields from schema
+    const requiredFields = extractRequiredFields(internalSchema.value)
+
+    // Check each required field
+    const newErrors: Record<string, string> = {}
+    for (const field of requiredFields) {
+        const value = internalFormData.value[field.name]
+        if (isValueEmpty(value)) {
+            newErrors[field.name] = `${field.label} is required.`
+        }
     }
 
-    const isValid = formRef.value.checkValidity()
-
-    if (!isValid) {
-        // Trigger validation UI (show error messages)
-        formRef.value.reportValidity()
+    // If there are validation errors, set them and return false
+    if (Object.keys(newErrors).length > 0) {
+        localErrors.value = newErrors
+        return false
     }
 
-    return isValid
+    // Also run HTML5 validation for native form elements
+    if (formRef.value) {
+        const isHtml5Valid = formRef.value.checkValidity()
+        if (!isHtml5Valid) {
+            formRef.value.reportValidity()
+            return false
+        }
+    }
+
+    return true
+}
+
+// Clear local validation errors (useful when modal closes or form resets)
+const clearValidationErrors = () => {
+    localErrors.value = {}
 }
 
 // Function to update schema (for reactive fields)
@@ -338,16 +440,50 @@ const updateSchema = (newSchema: any[]) => {
     })
 }
 
-// Provide getFormData, validateForm, updateSchema, and schemaId to all child components
+// Provide getFormData, validateForm, updateSchema, schemaId, and errors to all child components
 provide('getFormData', getFormData)
 provide('validateForm', validateForm)
 provide('updateSchema', updateSchema)
 provide('schemaId', props.schemaId || null)
+// Override the errors provided by ErrorProvider with our merged errors (local + server)
+provide('errors', errors)
+
+// Expose getFormData, validateForm, and clearValidationErrors to parent components via template ref
+defineExpose({
+    getFormData,
+    validateForm,
+    clearValidationErrors
+})
 
 // Check if an item is an action
 const isAction = (item: any) => {
     // Actions have hasAction property or don't have a component property
     return item.hasAction === true || (item.name && !item.component)
+}
+
+// Check if the next item is an action
+const isNextItemAction = (index: number) => {
+    const nextItem = internalSchema.value[index + 1]
+    return nextItem && isAction(nextItem)
+}
+
+// Check if the previous item is an action
+const isPreviousItemAction = (index: number) => {
+    const prevItem = internalSchema.value[index - 1]
+    return prevItem && isAction(prevItem)
+}
+
+// Get all consecutive actions starting from the next index
+const getConsecutiveActions = (startIndex: number) => {
+    const actions = []
+    let currentIndex = startIndex + 1
+
+    while (currentIndex < internalSchema.value.length && isAction(internalSchema.value[currentIndex])) {
+        actions.push(internalSchema.value[currentIndex])
+        currentIndex++
+    }
+
+    return actions
 }
 
 // Check if a component is a schema component (needs entire modelValue, not just a field value)
@@ -415,5 +551,14 @@ const getComponent = (component: any) => {
 const getComponentProps = (component: any) => {
     const { value, modelValue, ...props } = component
     return props
+}
+
+// Get error message for a component
+const getError = (component: any) => {
+    // errors is a computed ref, access its value
+    const errorsObj = errors.value
+    if (!component.name || !errorsObj) return undefined
+    const error = errorsObj[component.name]
+    return Array.isArray(error) ? error[0] : error
 }
 </script>

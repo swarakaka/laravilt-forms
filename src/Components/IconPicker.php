@@ -19,6 +19,21 @@ class IconPicker extends Field
     protected bool|Closure $showIconName = true;
 
     /**
+     * Whether to allow multiple icon selection.
+     */
+    protected bool|Closure $multiple = false;
+
+    /**
+     * Maximum number of icons that can be selected.
+     */
+    protected int|Closure|null $maxItems = null;
+
+    /**
+     * Minimum number of icons that must be selected.
+     */
+    protected int|Closure|null $minItems = null;
+
+    /**
      * Set the available icons.
      */
     public function icons(array|Closure $icons): static
@@ -69,6 +84,60 @@ class IconPicker extends Field
     }
 
     /**
+     * Enable multiple icon selection.
+     */
+    public function multiple(bool|Closure $condition = true): static
+    {
+        $this->multiple = $condition;
+
+        return $this;
+    }
+
+    /**
+     * Check if multiple selection is enabled.
+     */
+    public function isMultiple(): bool
+    {
+        return $this->evaluate($this->multiple);
+    }
+
+    /**
+     * Set the maximum number of icons.
+     */
+    public function maxItems(int|Closure|null $count): static
+    {
+        $this->maxItems = $count;
+
+        return $this;
+    }
+
+    /**
+     * Get the maximum number of icons.
+     */
+    public function getMaxItems(): ?int
+    {
+        return $this->evaluate($this->maxItems);
+    }
+
+    /**
+     * Set the minimum number of icons.
+     */
+    public function minItems(int|Closure|null $count): static
+    {
+        $this->minItems = $count;
+
+        return $this;
+    }
+
+    /**
+     * Get the minimum number of icons.
+     */
+    public function getMinItems(): ?int
+    {
+        return $this->evaluate($this->minItems);
+    }
+
+    /**
      * Get the icons array.
      */
     protected function getIcons(): array
@@ -111,7 +180,7 @@ class IconPicker extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'icons' => $this->getIcons(),
             'searchable' => $this->evaluate($this->searchable),
             'placeholder' => $this->evaluate($this->placeholder) ?? 'Select an icon...',
@@ -120,7 +189,7 @@ class IconPicker extends Field
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState(),
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string
@@ -148,9 +217,16 @@ class IconPicker extends Field
             'name' => $this->name,
             'icons' => $this->getIcons(),
             'searchable' => $this->evaluate($this->searchable),
-            'placeholder' => $this->evaluate($this->placeholder) ?? 'Select an icon...',
             'gridColumns' => $this->evaluate($this->gridColumns),
             'showIconName' => $this->evaluate($this->showIconName),
+            'multiple' => $this->isMultiple(),
+            'maxItems' => $this->getMaxItems(),
+            'minItems' => $this->getMinItems(),
+            'translations' => [
+                'placeholder' => $this->evaluate($this->placeholder) ?? __('forms::forms.icon_picker.placeholder'),
+                'searchPlaceholder' => __('forms::forms.icon_picker.search_placeholder'),
+                'noIconsFound' => __('forms::forms.icon_picker.no_icons_found'),
+            ],
         ]);
     }
 }

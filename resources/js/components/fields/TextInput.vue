@@ -103,7 +103,7 @@
 
         <div
             v-if="showCharacterCount && maxLength && type !== 'tel'"
-            class="mt-1.5 text-right text-xs text-muted-foreground"
+            class="mt-1.5 text-end text-xs text-muted-foreground"
         >
             {{ characterCount }} / {{ maxLength }}
         </div>

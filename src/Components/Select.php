@@ -609,8 +609,11 @@ class Select extends Field
 
             // If closure has parameters (Get/Set), evaluate with current form data
             if (count($parameters) > 0) {
-                // Get formData from the request (sent during reactive updates)
-                $formData = request()->input('formData', []);
+                // Use evaluation context data (set by evaluationContext()) first,
+                // fall back to request formData for backward compatibility
+                $formData = ! empty($this->evaluationData)
+                    ? $this->evaluationData
+                    : request()->input('formData', []);
 
                 // Create Get and Set utilities
                 $get = new \Laravilt\Support\Utilities\Get($formData);

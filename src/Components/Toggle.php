@@ -33,6 +33,26 @@ class Toggle extends Field
 
     protected string $offColor = 'gray';
 
+    protected bool $inline = true;
+
+    /**
+     * Set whether the toggle should be displayed inline (beside its label).
+     */
+    public function inline(bool $condition = true): static
+    {
+        $this->inline = $condition;
+
+        return $this;
+    }
+
+    /**
+     * Get the inline setting.
+     */
+    public function isInline(): bool
+    {
+        return $this->inline;
+    }
+
     /**
      * Set the value when toggle is on.
      */
@@ -200,6 +220,7 @@ class Toggle extends Field
             'onColor' => $this->getOnColor(),
             'offColor' => $this->getOffColor(),
             'isOn' => $this->isOn(),
+            'inline' => $this->isInline(),
             'isLive' => $this->isLive(),
             'isLazy' => $this->isLazy(),
             'liveDebounce' => $this->getLiveDebounce(),

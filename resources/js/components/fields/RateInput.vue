@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Star, Heart, ThumbsUp, Flame, Trophy } from 'lucide-vue-next'
 
 interface Props {
@@ -35,6 +35,13 @@ const emit = defineEmits<{
 
 const rating = ref<number>(props.modelValue ?? props.value ?? 0)
 const hoverRating = ref<number>(0)
+
+// Watch for external value changes (e.g., when editing)
+watch(() => props.modelValue ?? props.value, (newValue) => {
+  if (newValue !== null && newValue !== undefined) {
+    rating.value = newValue
+  }
+}, { immediate: true })
 
 const iconMap: Record<string, any> = {
   star: Star,

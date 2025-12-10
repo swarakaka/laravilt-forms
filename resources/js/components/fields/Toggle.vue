@@ -23,8 +23,8 @@
         :hidden-label="true"
         :hint-actions="hintActions"
     >
-        <div class="flex items-center justify-between space-x-2">
-            <Label :for="name" class="flex flex-col space-y-1">
+        <div class="flex items-start justify-between gap-2">
+            <Label :for="name" class="flex flex-col items-start space-y-1 text-start">
                 <span>{{ label }}</span>
                 <span
                     v-if="!hasError && helperText"

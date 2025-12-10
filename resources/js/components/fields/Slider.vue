@@ -118,7 +118,7 @@ const sliderValue = computed(() => [internalValue.value])
       </SliderRoot>
 
       <!-- Value display -->
-      <span v-if="showValue" class="text-sm font-medium text-muted-foreground min-w-[3ch] text-right shrink-0">
+      <span v-if="showValue" class="text-sm font-medium text-muted-foreground min-w-[3ch] text-end shrink-0">
         {{ internalValue }}
       </span>
 

@@ -14,6 +14,8 @@ class TagsInput extends Field
 
     protected ?int $maxTags = null;
 
+    protected array $splitKeys = ['Tab', 'Enter'];
+
     /**
      * Set the tag separator.
      */
@@ -45,6 +47,16 @@ class TagsInput extends Field
     }
 
     /**
+     * Set the keys that will split tags.
+     */
+    public function splitKeys(array $keys): static
+    {
+        $this->splitKeys = $keys;
+
+        return $this;
+    }
+
+    /**
      * Get the suggestions array.
      */
     protected function getSuggestions(): array
@@ -63,15 +75,17 @@ class TagsInput extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'placeholder' => $this->placeholder,
             'disabled' => $this->disabled,
             'separator' => $this->separator,
+            'splitKeys' => $this->splitKeys,
             'suggestions' => $this->getSuggestions(),
+            'maxTags' => $this->maxTags,
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState() ?? [],
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string

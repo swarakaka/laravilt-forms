@@ -124,9 +124,25 @@ trait HasValidation
         return $this->addRules("min:{$min}");
     }
 
+    /**
+     * Alias for min() to match FilamentPHP API
+     */
+    public function minValue(int|float $value): static
+    {
+        return $this->min($value);
+    }
+
     public function max(int|float $max): static
     {
         return $this->addRules("max:{$max}");
+    }
+
+    /**
+     * Alias for max() to match FilamentPHP API
+     */
+    public function maxValue(int|float $value): static
+    {
+        return $this->max($value);
     }
 
     public function minLength(int $length): static
@@ -139,11 +155,19 @@ trait HasValidation
         return $this->addRules("max:{$length}");
     }
 
-    public function unique(?string $table = null, string $column = 'NULL', ?string $ignoreId = null): static
+    public function unique(?string $table = null, string $column = 'NULL', ?string $ignoreId = null, bool $ignoreRecord = false): static
     {
         // If called without params, just mark as unique (for frontend validation hint)
-        if ($table === null) {
+        if ($table === null && !$ignoreRecord) {
             $this->meta['unique'] = true;
+
+            return $this;
+        }
+
+        // Store ignoreRecord flag for later use during validation
+        if ($ignoreRecord) {
+            $this->meta['unique'] = true;
+            $this->meta['uniqueIgnoreRecord'] = true;
 
             return $this;
         }

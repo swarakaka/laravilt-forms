@@ -142,7 +142,7 @@ class MarkdownEditor extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'placeholder' => $this->placeholder,
             'preview' => $this->preview,
             'showCharacterCount' => $this->showCharacterCount,
@@ -156,7 +156,7 @@ class MarkdownEditor extends Field
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState(),
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string

@@ -734,7 +734,7 @@ class FileUpload extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'disk' => $this->getDisk(),
             'directory' => $this->getDirectory(),
             'visibility' => $this->getVisibility(),
@@ -793,7 +793,31 @@ class FileUpload extends Field
             'mimeTypeMap' => $this->evaluate($this->mimeTypeMap),
             'maxParallelUploads' => $this->evaluate($this->maxParallelUploads),
             'alignCenter' => $this->evaluate($this->alignCenter),
-        ], $this->getIconProps());
+            'translations' => [
+                'dragDrop' => __('forms::forms.file_upload.drag_drop'),
+                'browse' => __('forms::forms.file_upload.browse'),
+                'aspectRatio' => __('forms::forms.file_upload.aspect_ratio'),
+                'rotateLeft' => __('forms::forms.file_upload.rotate_left'),
+                'rotateRight' => __('forms::forms.file_upload.rotate_right'),
+                'flipHorizontal' => __('forms::forms.file_upload.flip_horizontal'),
+                'flipVertical' => __('forms::forms.file_upload.flip_vertical'),
+                'zoomIn' => __('forms::forms.file_upload.zoom_in'),
+                'zoomOut' => __('forms::forms.file_upload.zoom_out'),
+                'cancel' => __('forms::forms.file_upload.cancel'),
+                'reset' => __('forms::forms.file_upload.reset'),
+                'save' => __('forms::forms.file_upload.save'),
+                'openFile' => __('forms::forms.file_upload.open_file'),
+                'downloadFile' => __('forms::forms.file_upload.download_file'),
+            ],
+        ];
+    }
+
+    /**
+     * Serialize component for Laravilt (Blade + Vue.js).
+     */
+    public function toLaraviltProps(): array
+    {
+        return array_merge(parent::toLaraviltProps(), $this->getVueProps());
     }
 
     protected function getFlutterWidget(): string

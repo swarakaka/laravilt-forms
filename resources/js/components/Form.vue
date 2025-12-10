@@ -28,7 +28,8 @@
                 :is="getComponent(component)"
                 v-bind="getComponentProps(component)"
                 :value="isSchemaComponent(component) ? undefined : internalFormData[component.name]"
-                :modelValue="isSchemaComponent(component) ? internalFormData : undefined"
+                :model-value="isSchemaComponent(component) ? internalFormData : internalFormData[component.name]"
+                :disabled="disabled || component.disabled"
                 :error="getError(component)"
                 @update:model-value="(value) => handleComponentUpdate(component, value)"
             />
@@ -39,6 +40,16 @@
 <script setup lang="ts">
 import { defineAsyncComponent, onMounted, onUnmounted, computed, h, ref, watch, provide, inject, nextTick } from 'vue'
 import ActionButton from '@laravilt/actions/components/ActionButton.vue'
+
+// Import commonly used components directly for faster modal/form load
+import Grid from './schema/Grid.vue'
+import Section from './schema/Section.vue'
+import TextInput from './fields/TextInput.vue'
+import Textarea from './fields/Textarea.vue'
+import Toggle from './fields/Toggle.vue'
+import Checkbox from './fields/Checkbox.vue'
+import Select from './fields/Select.vue'
+import Hidden from './fields/Hidden.vue'
 
 const formRef = ref<HTMLFormElement | null>(null)
 const internalFormData = ref<Record<string, any>>({})
@@ -68,11 +79,17 @@ const FormActionButton = {
     },
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     schema: Array<any>
     modelValue?: Record<string, any>
     schemaId?: string
-}>()
+    disabled?: boolean
+    formController?: string
+    formMethod?: string
+}>(), {
+    formController: undefined,
+    formMethod: 'getSchema',
+})
 
 const emit = defineEmits<{
     'update:modelValue': [value: Record<string, any>]
@@ -133,16 +150,15 @@ const extractFieldDefaults = (schema: Array<any>): Record<string, any> => {
 }
 
 // Initialize form data with defaults from schema
+// Note: The watcher with immediate: true handles initial modelValue merging
 const initializeFormData = () => {
-    const defaults = extractFieldDefaults(internalSchema.value)
-
-    // Merge with any provided modelValue
-    internalFormData.value = {
-        ...defaults,
-        ...(props.modelValue || {})
+    // Only initialize with defaults if modelValue is empty
+    // The watcher handles cases where modelValue is provided
+    if (!props.modelValue || Object.keys(props.modelValue).length === 0) {
+        const defaults = extractFieldDefaults(internalSchema.value)
+        internalFormData.value = { ...defaults }
+        emit('update:modelValue', internalFormData.value)
     }
-
-    emit('update:modelValue', internalFormData.value)
 }
 
 // Handle action-updated data events
@@ -181,14 +197,18 @@ watch(internalSchema, () => {
 }, { deep: true })
 
 // Watch for external modelValue changes and merge them
+// Use immediate: true to handle initial value properly (important for edit/view modals)
 watch(() => props.modelValue, (newValue) => {
-    if (newValue) {
+    if (newValue && Object.keys(newValue).length > 0) {
+        // Get defaults from schema
+        const defaults = extractFieldDefaults(internalSchema.value)
+        // Merge defaults with new value - new value takes precedence
         internalFormData.value = {
-            ...internalFormData.value,
+            ...defaults,
             ...newValue
         }
     }
-}, { deep: true })
+}, { deep: true, immediate: true })
 
 // Handle component update events
 const handleComponentUpdate = async (component: any, value: any) => {
@@ -274,6 +294,12 @@ const findFieldInSchema = (schema: any[], fieldName: string): any => {
 
 // Trigger reactive field update
 const triggerReactiveFieldUpdate = async (fieldName: string, field: any) => {
+    // Skip if no form controller is configured
+    if (!props.formController) {
+        console.warn('[Form] No formController configured, skipping reactive field update')
+        return
+    }
+
     const debounceMs = field.isLazy
         ? (field.liveDebounce || 500)
         : (field.isLive && field.liveDebounce ? field.liveDebounce : 0)
@@ -281,8 +307,8 @@ const triggerReactiveFieldUpdate = async (fieldName: string, field: any) => {
     // TODO: Implement debouncing if needed
     try {
         const payload = {
-            controller: 'App\\Http\\Controllers\\DemoController',
-            method: 'getSchema',
+            controller: props.formController,
+            method: props.formMethod || 'getSchema',
             data: internalFormData.value,
             changed_field: fieldName,
         }
@@ -440,11 +466,13 @@ const updateSchema = (newSchema: any[]) => {
     })
 }
 
-// Provide getFormData, validateForm, updateSchema, schemaId, and errors to all child components
+// Provide getFormData, validateForm, updateSchema, schemaId, formController, and errors to all child components
 provide('getFormData', getFormData)
 provide('validateForm', validateForm)
 provide('updateSchema', updateSchema)
 provide('schemaId', props.schemaId || null)
+provide('formController', props.formController)
+provide('formMethod', props.formMethod)
 // Override the errors provided by ErrorProvider with our merged errors (local + server)
 provide('errors', errors)
 
@@ -506,21 +534,24 @@ const containerClass = computed(() => {
 
 
 // Map component types to their Vue components
+// Common components are imported directly for fast load, rare/heavy components are async
 const componentMap: Record<string, any> = {
-    // Schema layout components
+    // Schema layout components (directly imported)
+    grid: Grid,
+    section: Section,
     tabs: defineAsyncComponent(() => import('./schema/Tabs.vue')),
-    section: defineAsyncComponent(() => import('./schema/Section.vue')),
-    grid: defineAsyncComponent(() => import('./schema/Grid.vue')),
 
-    // Form field components
-    text_input: defineAsyncComponent(() => import('./fields/TextInput.vue')),
-    textarea: defineAsyncComponent(() => import('./fields/Textarea.vue')),
-    select: defineAsyncComponent(() => import('./fields/Select.vue')),
-    checkbox: defineAsyncComponent(() => import('./fields/Checkbox.vue')),
+    // Common form field components (directly imported for fast modal load)
+    text_input: TextInput,
+    textarea: Textarea,
+    toggle: Toggle,
+    checkbox: Checkbox,
+    select: Select,
+    hidden: Hidden,
+
+    // Less common/heavier components (async loaded)
     radio: defineAsyncComponent(() => import('./fields/Radio.vue')),
-    toggle: defineAsyncComponent(() => import('./fields/Toggle.vue')),
     toggle_buttons: defineAsyncComponent(() => import('./fields/ToggleButtons.vue')),
-    hidden: defineAsyncComponent(() => import('./fields/Hidden.vue')),
     date_picker: defineAsyncComponent(() => import('./fields/DatePicker.vue')),
     time_picker: defineAsyncComponent(() => import('./fields/TimePicker.vue')),
     date_time_picker: defineAsyncComponent(() => import('./fields/DateTimePicker.vue')),
@@ -547,10 +578,10 @@ const getComponent = (component: any) => {
     return componentMap[type] || 'div'
 }
 
-// Get component props, excluding value and modelValue since we set them explicitly
+// Get component props, excluding value, modelValue, and disabled since we set them explicitly
 const getComponentProps = (component: any) => {
-    const { value, modelValue, ...props } = component
-    return props
+    const { value, modelValue, disabled, ...rest } = component
+    return rest
 }
 
 // Get error message for a component

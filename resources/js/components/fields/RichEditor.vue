@@ -150,7 +150,7 @@ const getIconColorClass = (color?: string) => {
 
 // Initialize TipTap editor
 const editor = useEditor({
-  content: props.modelValue,
+  content: props.modelValue || props.value || '',
   editable: !props.disabled,
   extensions: [
     StarterKit.configure({
@@ -202,8 +202,8 @@ const editor = useEditor({
   },
 })
 
-// Watch for external changes to modelValue
-watch(() => props.modelValue, (value) => {
+// Watch for external changes to modelValue or value
+watch(() => props.modelValue ?? props.value, (value) => {
   if (!editor.value) return
 
   if (props.json) {
@@ -220,7 +220,7 @@ watch(() => props.modelValue, (value) => {
       editor.value.commands.setContent(value || '', false)
     }
   }
-})
+}, { immediate: true })
 
 // Watch for disabled changes
 watch(() => props.disabled, (disabled) => {

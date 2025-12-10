@@ -543,7 +543,7 @@ const getComponent = (componentName: string): any | null => {
               <CollapsibleTrigger v-if="collapsible" as-child>
                 <button
                   type="button"
-                  class="flex-1 flex items-center gap-2 text-sm font-medium text-left hover:text-primary transition-colors"
+                  class="flex-1 flex items-center gap-2 text-sm font-medium text-start hover:text-primary transition-colors"
                   @click="toggleCollapse(item.id)"
                 >
                   <ChevronDown

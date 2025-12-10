@@ -33,6 +33,7 @@ const FilePond = vueFilePond(
 
 interface FileUploadProps {
   modelValue?: string | string[] | null
+  value?: string | string[] | null
   label?: string
   helperText?: string
   required?: boolean
@@ -97,6 +98,22 @@ interface FileUploadProps {
   previewable?: boolean
   deletable?: boolean
   alignCenter?: boolean
+  translations?: {
+    dragDrop?: string
+    browse?: string
+    aspectRatio?: string
+    rotateLeft?: string
+    rotateRight?: string
+    flipHorizontal?: string
+    flipVertical?: string
+    zoomIn?: string
+    zoomOut?: string
+    cancel?: string
+    reset?: string
+    save?: string
+    openFile?: string
+    downloadFile?: string
+  }
 }
 
 const props = withDefaults(defineProps<FileUploadProps>(), {
@@ -736,10 +753,18 @@ const handleUpdateFiles = (files: any[]) => {
   }
 }
 
-// Load existing files
-watch(() => props.modelValue, (newValue) => {
-  log('modelValue changed', newValue)
+// Load existing files from modelValue or value prop
+watch(() => props.modelValue ?? props.value, (newValue) => {
+  log('modelValue/value changed', newValue)
   syncFilesFromValue(newValue)
+}, { immediate: true })
+
+// Also watch value prop separately for initial load from PHP
+watch(() => props.value, (newValue) => {
+  if (newValue && !props.modelValue) {
+    log('value prop changed (no modelValue)', newValue)
+    syncFilesFromValue(newValue)
+  }
 }, { immediate: true })
 
 // Add "Open" button functionality when openable is enabled
@@ -772,7 +797,7 @@ const injectOpenButtons = () => {
     const openButton = document.createElement('button')
     openButton.type = 'button'
     openButton.className = 'filepond--file-action-button filepond--action-open-item filepond-open-button'
-    openButton.title = 'Open file in new tab'
+    openButton.title = props.translations?.openFile || 'Open file in new tab'
     openButton.setAttribute('data-align', 'left')
     openButton.innerHTML = `
       <svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">
@@ -834,7 +859,7 @@ const injectDownloadButtons = () => {
     const downloadButton = document.createElement('button')
     downloadButton.type = 'button'
     downloadButton.className = 'filepond--file-action-button filepond--action-download-item filepond-download-button'
-    downloadButton.title = 'Download file'
+    downloadButton.title = props.translations?.downloadFile || 'Download file'
     downloadButton.setAttribute('data-align', 'left')
     downloadButton.innerHTML = `
       <svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">
@@ -982,10 +1007,10 @@ const filePondOptions = computed(() => {
     options.styleProgressIndicatorPosition = props.uploadProgressIndicatorPosition
   }
 
-  // Apply uploading message
-  if (props.uploadingMessage) {
-    options.labelIdle = props.uploadingMessage
-  }
+  // Set labelIdle (drag & drop text) - use translations or uploading message
+  const dragDropText = props.translations?.dragDrop || 'Drag & Drop your files or'
+  const browseText = props.translations?.browse || 'Browse'
+  options.labelIdle = props.uploadingMessage || `${dragDropText} <span class="filepond--label-action">${browseText}</span>`
 
   // Image EXIF orientation (auto-orient images based on EXIF data)
   options.allowImageExifOrientation = props.orientImagesFromExif ?? true
@@ -1066,7 +1091,7 @@ const filePondOptions = computed(() => {
 
           const aspectLabel = document.createElement('span')
           aspectLabel.className = 'filepond-image-editor-aspect-label'
-          aspectLabel.textContent = 'Aspect Ratio:'
+          aspectLabel.textContent = props.translations?.aspectRatio || 'Aspect Ratio:'
           aspectRatioGroup.appendChild(aspectLabel)
         }
 
@@ -1075,12 +1100,12 @@ const filePondOptions = computed(() => {
         actionsGroup.className = 'filepond-image-editor-actions'
 
         // Rotate buttons
-        const rotateLeftBtn = createEditorButton('↶', 'Rotate Left')
-        const rotateRightBtn = createEditorButton('↷', 'Rotate Right')
-        const flipHBtn = createEditorButton('⇄', 'Flip Horizontal')
-        const flipVBtn = createEditorButton('⇅', 'Flip Vertical')
-        const zoomInBtn = createEditorButton('+', 'Zoom In')
-        const zoomOutBtn = createEditorButton('−', 'Zoom Out')
+        const rotateLeftBtn = createEditorButton('↶', props.translations?.rotateLeft || 'Rotate Left')
+        const rotateRightBtn = createEditorButton('↷', props.translations?.rotateRight || 'Rotate Right')
+        const flipHBtn = createEditorButton('⇄', props.translations?.flipHorizontal || 'Flip Horizontal')
+        const flipVBtn = createEditorButton('⇅', props.translations?.flipVertical || 'Flip Vertical')
+        const zoomInBtn = createEditorButton('+', props.translations?.zoomIn || 'Zoom In')
+        const zoomOutBtn = createEditorButton('−', props.translations?.zoomOut || 'Zoom Out')
 
         actionsGroup.appendChild(rotateLeftBtn)
         actionsGroup.appendChild(rotateRightBtn)
@@ -1093,9 +1118,12 @@ const filePondOptions = computed(() => {
         const controlsGroup = document.createElement('div')
         controlsGroup.className = 'filepond-image-editor-controls'
 
-        const cancelBtn = createEditorButton('Cancel', 'Cancel', 'secondary')
-        const resetBtn = createEditorButton('Reset', 'Reset', 'destructive')
-        const confirmBtn = createEditorButton('Save', 'Save', 'primary')
+        const cancelBtnText = props.translations?.cancel || 'Cancel'
+        const resetBtnText = props.translations?.reset || 'Reset'
+        const saveBtnText = props.translations?.save || 'Save'
+        const cancelBtn = createEditorButton(cancelBtnText, cancelBtnText, 'secondary')
+        const resetBtn = createEditorButton(resetBtnText, resetBtnText, 'destructive')
+        const confirmBtn = createEditorButton(saveBtnText, saveBtnText, 'primary')
 
         controlsGroup.appendChild(cancelBtn)
         controlsGroup.appendChild(resetBtn)

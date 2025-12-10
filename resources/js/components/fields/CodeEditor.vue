@@ -20,7 +20,12 @@ import * as LucideIcons from 'lucide-vue-next'
 import { Code } from 'lucide-vue-next'
 
 interface Props {
-  modelValue?: string
+  name?: string
+  value?: string | null
+  modelValue?: string | null
+  label?: string
+  helperText?: string
+  required?: boolean
   language?: string
   theme?: 'light' | 'dark'
   lineNumbers?: boolean
@@ -34,7 +39,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: '',
+  modelValue: null,
+  value: null,
   language: 'javascript',
   theme: 'light',
   lineNumbers: true,
@@ -45,7 +51,11 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  'update:value': [value: string]
 }>()
+
+// Internal value tracking
+const internalValue = ref<string>(props.modelValue ?? props.value ?? '')
 
 const editorContainer = ref<HTMLDivElement>()
 let editorView: EditorView | null = null
@@ -162,7 +172,9 @@ const createEditorState = (doc: string) => {
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         const newValue = update.state.doc.toString()
+        internalValue.value = newValue
         emit('update:modelValue', newValue)
+        emit('update:value', newValue)
       }
     })
   )
@@ -184,7 +196,9 @@ const createEditorState = (doc: string) => {
 onMounted(() => {
   if (!editorContainer.value) return
 
-  const state = createEditorState(props.modelValue || '')
+  const initialValue = props.modelValue ?? props.value ?? ''
+  internalValue.value = initialValue
+  const state = createEditorState(initialValue)
 
   editorView = new EditorView({
     state,
@@ -199,11 +213,12 @@ onUnmounted(() => {
 })
 
 // Watch for external value changes
-watch(() => props.modelValue, (newValue) => {
+watch(() => props.modelValue ?? props.value, (newValue) => {
   if (!editorView) return
 
   const currentValue = editorView.state.doc.toString()
-  if (newValue !== currentValue) {
+  if (newValue !== null && newValue !== undefined && newValue !== currentValue) {
+    internalValue.value = newValue
     editorView.dispatch({
       changes: {
         from: 0,
@@ -212,7 +227,7 @@ watch(() => props.modelValue, (newValue) => {
       },
     })
   }
-})
+}, { immediate: true })
 
 // Watch for language changes
 watch(() => props.language, () => {
@@ -262,6 +277,24 @@ watch(() => [props.readOnly, props.disabled], () => {
 
 <template>
   <div class="w-full space-y-2">
+    <!-- Label -->
+    <label
+      v-if="label"
+      :for="name"
+      class="text-sm font-medium block text-foreground"
+    >
+      {{ label }}
+      <span v-if="required" class="text-destructive ms-0.5">*</span>
+    </label>
+
+    <!-- Hidden input for form submission -->
+    <input
+      v-if="name"
+      type="hidden"
+      :name="name"
+      :value="internalValue"
+    />
+
     <!-- Header with language and icons -->
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
@@ -290,6 +323,14 @@ watch(() => [props.readOnly, props.disabled], () => {
         'opacity-50 cursor-not-allowed': disabled,
       }"
     />
+
+    <!-- Helper text -->
+    <p
+      v-if="helperText"
+      class="text-xs text-muted-foreground mt-1"
+    >
+      {{ helperText }}
+    </p>
   </div>
 </template>
 

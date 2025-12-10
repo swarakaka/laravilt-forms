@@ -27,6 +27,10 @@ import TextInput from './TextInput.vue'
 import Textarea from './Textarea.vue'
 import Toggle from './Toggle.vue'
 import { useReactiveField } from '../../composables/useReactiveField'
+import { useLocalization } from '@/composables/useLocalization'
+
+// Initialize localization
+const { trans } = useLocalization()
 
 interface Option {
   value: string
@@ -83,6 +87,21 @@ interface Props {
   isLazy?: boolean // Whether field triggers debounced reactive updates
   liveDebounce?: number // Debounce delay for reactive updates
   meta?: Record<string, any> // Additional metadata (e.g., dependentOptions)
+  // Text labels for i18n support
+  createModalTitle?: string
+  createModalDescription?: string
+  editModalTitle?: string
+  editModalDescription?: string
+  cancelButtonLabel?: string
+  createButtonLabel?: string
+  creatingButtonLabel?: string
+  saveChangesButtonLabel?: string
+  savingButtonLabel?: string
+  scrollForMoreLabel?: string
+  searchPlaceholder?: string
+  tryAdjustingSearchLabel?: string
+  minItemsValidationMessage?: string
+  maxItemsValidationMessage?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -112,6 +131,18 @@ const props = withDefaults(defineProps<Props>(), {
   isLazy: false,
   liveDebounce: 500,
   meta: () => ({}),
+  createModalTitle: 'Create New Option',
+  createModalDescription: 'Create a new option for this field. It will be automatically selected after creation.',
+  editModalTitle: 'Edit Option',
+  editModalDescription: 'Update the option details. Changes will be reflected immediately.',
+  cancelButtonLabel: 'Cancel',
+  createButtonLabel: 'Create',
+  creatingButtonLabel: 'Creating...',
+  saveChangesButtonLabel: 'Save Changes',
+  savingButtonLabel: 'Saving...',
+  scrollForMoreLabel: 'Scroll for more',
+  searchPlaceholder: 'Search...',
+  tryAdjustingSearchLabel: 'Try adjusting your search',
 })
 
 const emit = defineEmits<{
@@ -123,6 +154,25 @@ const emit = defineEmits<{
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingOptionId = ref<string | null>(null)
+
+// Computed translated labels
+const translatedPlaceholder = computed(() => props.placeholder !== 'Select an option' ? props.placeholder : trans('select.placeholder'))
+const translatedLoadingMessage = computed(() => props.loadingMessage !== 'Loading options...' ? props.loadingMessage : trans('select.loading_message'))
+const translatedNoSearchResultsMessage = computed(() => props.noSearchResultsMessage !== 'No results found' ? props.noSearchResultsMessage : trans('select.no_search_results_message'))
+const translatedSearchPrompt = computed(() => props.searchPrompt !== 'Start typing to search...' ? props.searchPrompt : trans('select.search_prompt'))
+const translatedSearchingMessage = computed(() => props.searchingMessage !== 'Searching...' ? props.searchingMessage : trans('select.searching_message'))
+const translatedCreateModalTitle = computed(() => props.createModalTitle !== 'Create New Option' ? props.createModalTitle : trans('select.create_modal_title'))
+const translatedCreateModalDescription = computed(() => props.createModalDescription !== 'Create a new option for this field. It will be automatically selected after creation.' ? props.createModalDescription : trans('select.create_modal_description'))
+const translatedEditModalTitle = computed(() => props.editModalTitle !== 'Edit Option' ? props.editModalTitle : trans('select.edit_modal_title'))
+const translatedEditModalDescription = computed(() => props.editModalDescription !== 'Update the option details. Changes will be reflected immediately.' ? props.editModalDescription : trans('select.edit_modal_description'))
+const translatedCancelButtonLabel = computed(() => props.cancelButtonLabel !== 'Cancel' ? props.cancelButtonLabel : trans('select.cancel_button_label'))
+const translatedCreateButtonLabel = computed(() => props.createButtonLabel !== 'Create' ? props.createButtonLabel : trans('select.create_button_label'))
+const translatedCreatingButtonLabel = computed(() => props.creatingButtonLabel !== 'Creating...' ? props.creatingButtonLabel : trans('select.creating_button_label'))
+const translatedSaveChangesButtonLabel = computed(() => props.saveChangesButtonLabel !== 'Save Changes' ? props.saveChangesButtonLabel : trans('select.save_changes_button_label'))
+const translatedSavingButtonLabel = computed(() => props.savingButtonLabel !== 'Saving...' ? props.savingButtonLabel : trans('select.saving_button_label'))
+const translatedScrollForMoreLabel = computed(() => props.scrollForMoreLabel !== 'Scroll for more' ? props.scrollForMoreLabel : trans('select.scroll_for_more_label'))
+const translatedSearchPlaceholder = computed(() => props.searchPlaceholder !== 'Search...' ? props.searchPlaceholder : trans('select.search_placeholder'))
+const translatedTryAdjustingSearchLabel = computed(() => props.tryAdjustingSearchLabel !== 'Try adjusting your search' ? props.tryAdjustingSearchLabel : trans('select.try_adjusting_search_label'))
 
 // Component mapping for dynamic form rendering
 const componentMap: Record<string, VueComponent> = {
@@ -223,6 +273,8 @@ const selectedValues = computed<string[]>({
 
 // Inject getFormData from FormRenderer (for reactive fields)
 const getFormData = inject<(() => Record<string, any>) | undefined>('getFormData', undefined)
+const formController = inject<string | undefined>('formController', undefined)
+const formMethod = inject<string | undefined>('formMethod', 'getSchema')
 
 // Inject updateSchema from FormRenderer (for updating schema after reactive field changes)
 const updateSchema = inject<((schema: any[]) => void) | undefined>('updateSchema', undefined)
@@ -250,6 +302,12 @@ if ((props.isLive || props.isLazy) && props.name) {
 
     // Function to trigger reactive field update
     const triggerUpdate = async () => {
+      // Skip if no formController is configured
+      if (!formController) {
+        console.warn('[Select] No formController configured, skipping reactive field update')
+        return
+      }
+
       isUpdating.value = true
       const formData = getFormData ? getFormData() : {}
 
@@ -262,8 +320,8 @@ if ((props.isLive || props.isLazy) && props.name) {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
           },
           body: JSON.stringify({
-            controller: 'App\\Http\\Controllers\\DemoController',
-            method: 'getSchema',
+            controller: formController,
+            method: formMethod || 'getSchema',
             data: formData,
             changed_field: props.name,
           }),
@@ -369,7 +427,7 @@ const displayValue = computed(() => {
 
 // Display text for the input (shows label or placeholder)
 const displayText = computed(() => {
-  return displayValue.value || props.placeholder
+  return displayValue.value || translatedPlaceholder.value
 })
 
 // Current search query (separate from ComboboxRoot's internal state)
@@ -1078,7 +1136,7 @@ const updateOption = async () => {
           </span>
           <ComboboxInput
             v-model="searchTerm"
-            :placeholder="selectedValues.length > 0 ? 'Search...' : props.placeholder"
+            :placeholder="selectedValues.length > 0 ? translatedSearchPlaceholder : translatedPlaceholder"
             class="flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground text-sm"
             :disabled="disabled"
           />
@@ -1129,12 +1187,12 @@ const updateOption = async () => {
           v-else-if="!open"
           class="flex-1 min-w-0 text-sm text-muted-foreground"
         >
-          {{ props.placeholder }}
+          {{ translatedPlaceholder }}
         </span>
         <ComboboxInput
           v-else
           v-model="searchTerm"
-          :placeholder="props.placeholder"
+          :placeholder="translatedPlaceholder"
           class="flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground text-sm"
           :disabled="disabled"
           auto-focus
@@ -1175,7 +1233,7 @@ const updateOption = async () => {
           class="flex flex-col items-center justify-center gap-2 py-8"
         >
           <LoaderCircle class="h-5 w-5 animate-spin text-muted-foreground" />
-          <span class="text-sm text-muted-foreground">{{ props.loadingMessage }}</span>
+          <span class="text-sm text-muted-foreground">{{ translatedLoadingMessage }}</span>
         </div>
 
         <!-- Search results / Options list -->
@@ -1220,8 +1278,8 @@ const updateOption = async () => {
               class="flex items-center justify-center gap-2 px-2 py-3 text-sm text-muted-foreground"
             >
               <LoaderCircle v-if="loading" class="h-4 w-4 animate-spin" />
-              <span v-if="loading">{{ searchTerm ? props.searchingMessage : props.loadingMessage }}</span>
-              <span v-else-if="hasMore" class="text-xs">Scroll for more</span>
+              <span v-if="loading">{{ searchTerm ? translatedSearchingMessage : translatedLoadingMessage }}</span>
+              <span v-else-if="hasMore" class="text-xs">{{ translatedScrollForMoreLabel }}</span>
             </div>
           </div>
         </div>
@@ -1232,9 +1290,9 @@ const updateOption = async () => {
           class="flex flex-col items-center justify-center gap-3 py-8 px-4"
         >
           <div class="text-muted-foreground text-sm text-center">
-            <p v-if="searchTerm" class="font-medium">{{ props.noSearchResultsMessage }}</p>
-            <p v-else class="font-medium">{{ props.searchPrompt }}</p>
-            <p v-if="searchTerm" class="text-xs mt-1">Try adjusting your search</p>
+            <p v-if="searchTerm" class="font-medium">{{ translatedNoSearchResultsMessage }}</p>
+            <p v-else class="font-medium">{{ translatedSearchPrompt }}</p>
+            <p v-if="searchTerm" class="text-xs mt-1">{{ translatedTryAdjustingSearchLabel }}</p>
           </div>
 
           <!-- Create new option button -->
@@ -1247,7 +1305,7 @@ const updateOption = async () => {
             @click.stop="openCreateModal"
           >
             <Plus class="h-4 w-4" />
-            Create New
+            {{ translatedCreateButtonLabel }}
           </Button>
         </ComboboxEmpty>
       </ComboboxContent>
@@ -1288,9 +1346,9 @@ const updateOption = async () => {
   <Dialog v-model:open="showCreateModal">
     <DialogContent class="sm:max-w-[525px]">
       <DialogHeader>
-        <DialogTitle>Create New Option</DialogTitle>
+        <DialogTitle>{{ translatedCreateModalTitle }}</DialogTitle>
         <DialogDescription>
-          Create a new option for this field. It will be automatically selected after creation.
+          {{ translatedCreateModalDescription }}
         </DialogDescription>
       </DialogHeader>
       <div class="grid gap-4 py-4">
@@ -1321,7 +1379,7 @@ const updateOption = async () => {
           variant="outline"
           @click="showCreateModal = false"
         >
-          Cancel
+          {{ translatedCancelButtonLabel }}
         </Button>
         <Button
           type="button"
@@ -1329,7 +1387,7 @@ const updateOption = async () => {
           @click="saveNewOption"
         >
           <LoaderCircle v-if="savingOption" class="h-4 w-4 animate-spin mr-2" />
-          {{ savingOption ? 'Creating...' : 'Create' }}
+          {{ savingOption ? translatedCreatingButtonLabel : translatedCreateButtonLabel }}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -1339,9 +1397,9 @@ const updateOption = async () => {
   <Dialog v-model:open="showEditModal">
     <DialogContent class="sm:max-w-[525px]">
       <DialogHeader>
-        <DialogTitle>Edit Option</DialogTitle>
+        <DialogTitle>{{ translatedEditModalTitle }}</DialogTitle>
         <DialogDescription>
-          Update the option details. Changes will be reflected immediately.
+          {{ translatedEditModalDescription }}
         </DialogDescription>
       </DialogHeader>
       <div class="grid gap-4 py-4">
@@ -1372,7 +1430,7 @@ const updateOption = async () => {
           variant="outline"
           @click="showEditModal = false"
         >
-          Cancel
+          {{ translatedCancelButtonLabel }}
         </Button>
         <Button
           type="button"
@@ -1380,7 +1438,7 @@ const updateOption = async () => {
           @click="updateOption"
         >
           <LoaderCircle v-if="savingOption" class="h-4 w-4 animate-spin mr-2" />
-          {{ savingOption ? 'Saving...' : 'Save Changes' }}
+          {{ savingOption ? translatedSavingButtonLabel : translatedSaveChangesButtonLabel }}
         </Button>
       </DialogFooter>
     </DialogContent>

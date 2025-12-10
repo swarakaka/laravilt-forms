@@ -12,6 +12,7 @@ use Closure;
  * - RGB/RGBA colors
  * - Predefined color swatches
  * - Alpha channel (transparency)
+ * - Multiple color selection
  */
 class ColorPicker extends Field
 {
@@ -36,6 +37,21 @@ class ColorPicker extends Field
      * Whether to show the swatches.
      */
     protected bool|Closure $showSwatches = false;
+
+    /**
+     * Whether to allow multiple color selection.
+     */
+    protected bool|Closure $multiple = false;
+
+    /**
+     * Maximum number of colors that can be selected.
+     */
+    protected int|Closure|null $maxItems = null;
+
+    /**
+     * Minimum number of colors that must be selected.
+     */
+    protected int|Closure|null $minItems = null;
 
     /**
      * Enable alpha channel control.
@@ -101,6 +117,60 @@ class ColorPicker extends Field
     }
 
     /**
+     * Enable multiple color selection.
+     */
+    public function multiple(bool|Closure $condition = true): static
+    {
+        $this->multiple = $condition;
+
+        return $this;
+    }
+
+    /**
+     * Check if multiple selection is enabled.
+     */
+    public function isMultiple(): bool
+    {
+        return $this->evaluate($this->multiple);
+    }
+
+    /**
+     * Set the maximum number of colors.
+     */
+    public function maxItems(int|Closure|null $count): static
+    {
+        $this->maxItems = $count;
+
+        return $this;
+    }
+
+    /**
+     * Get the maximum number of colors.
+     */
+    public function getMaxItems(): ?int
+    {
+        return $this->evaluate($this->maxItems);
+    }
+
+    /**
+     * Set the minimum number of colors.
+     */
+    public function minItems(int|Closure|null $count): static
+    {
+        $this->minItems = $count;
+
+        return $this;
+    }
+
+    /**
+     * Get the minimum number of colors.
+     */
+    public function getMinItems(): ?int
+    {
+        return $this->evaluate($this->minItems);
+    }
+
+    /**
      * Serialize component for Laravilt (Blade + Vue.js).
      */
     public function toLaraviltProps(): array
@@ -110,6 +180,14 @@ class ColorPicker extends Field
             'format' => $this->getFormat(),
             'swatches' => $this->getSwatches(),
             'showSwatches' => $this->shouldShowSwatches(),
+            'multiple' => $this->isMultiple(),
+            'maxItems' => $this->getMaxItems(),
+            'minItems' => $this->getMinItems(),
+            'translations' => [
+                'placeholder' => __('forms::forms.color_picker.placeholder'),
+                'swatches' => __('forms::forms.color_picker.swatches'),
+                'commonColors' => __('forms::forms.color_picker.common_colors'),
+            ],
         ]);
     }
 }

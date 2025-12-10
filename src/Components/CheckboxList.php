@@ -33,7 +33,7 @@ class CheckboxList extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'options' => $this->getOptions(),
             'disabled' => $this->disabled,
             'inline' => $this->inline,
@@ -41,7 +41,7 @@ class CheckboxList extends Field
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState() ?? [],
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string

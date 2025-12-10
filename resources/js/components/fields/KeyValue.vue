@@ -3,7 +3,11 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import * as LucideIcons from 'lucide-vue-next'
 import { Plus, X, GripVertical } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useLocalization } from '@/composables/useLocalization'
+
+// Initialize localization
+const { trans } = useLocalization()
 
 interface KeyValuePair {
   key: string
@@ -41,6 +45,11 @@ const emit = defineEmits<{
   'update:modelValue': [value: Record<string, string> | KeyValuePair[]]
   'update:value': [value: Record<string, string> | KeyValuePair[]]
 }>()
+
+// Computed translated labels
+const translatedKeyLabel = computed(() => props.keyLabel !== 'Key' ? props.keyLabel : trans('key_value.key_label'))
+const translatedValueLabel = computed(() => props.valueLabel !== 'Value' ? props.valueLabel : trans('key_value.value_label'))
+const translatedAddButtonLabel = computed(() => props.addButtonLabel !== 'Add Item' ? props.addButtonLabel : trans('key_value.add_button_label'))
 
 // Helper to get Lucide icon component by name
 const getIconComponent = (iconName?: string) => {
@@ -167,7 +176,7 @@ const emitUpdate = () => {
         <!-- Key input -->
         <Input
           :model-value="pair.key"
-          :placeholder="keyLabel"
+          :placeholder="translatedKeyLabel"
           class="flex-1"
           @input="(e) => updatePair(index, 'key', (e.target as HTMLInputElement).value)"
         />
@@ -175,7 +184,7 @@ const emitUpdate = () => {
         <!-- Value input -->
         <Input
           :model-value="pair.value"
-          :placeholder="valueLabel"
+          :placeholder="translatedValueLabel"
           class="flex-1"
           @input="(e) => updatePair(index, 'value', (e.target as HTMLInputElement).value)"
         />
@@ -203,7 +212,7 @@ const emitUpdate = () => {
       @click="addPair"
     >
       <Plus class="h-4 w-4 mr-2" />
-      {{ addButtonLabel }}
+      {{ translatedAddButtonLabel }}
     </Button>
 
     <!-- Helper text -->

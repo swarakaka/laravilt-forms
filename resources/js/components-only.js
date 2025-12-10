@@ -2,7 +2,7 @@
 // This is used by the Blade demo which uses the main app's CSS
 
 // Import all components for registration
-import LaraviltFormRenderer from './components/FormRenderer.vue';
+import LaraviltForm from './components/Form.vue';
 import LaraviltFieldWrapper from './components/FieldWrapper.vue';
 import LaraviltTextInput from './components/fields/TextInput.vue';
 import LaraviltTextarea from './components/fields/Textarea.vue';
@@ -34,7 +34,7 @@ import LaraviltGrid from './components/schema/Grid.vue';
 export default {
     install(app) {
         // Register all components globally
-        app.component('laravilt-form-renderer', LaraviltFormRenderer);
+        app.component('laravilt-form', LaraviltForm);
         app.component('laravilt-field-wrapper', LaraviltFieldWrapper);
 
         // Field components

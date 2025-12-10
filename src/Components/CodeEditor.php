@@ -53,7 +53,7 @@ class CodeEditor extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'language' => $this->language instanceof Language ? $this->language->value : $this->language,
             'theme' => $this->theme,
             'lineNumbers' => $this->lineNumbers,
@@ -61,7 +61,7 @@ class CodeEditor extends Field
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState(),
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string

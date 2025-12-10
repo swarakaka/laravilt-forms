@@ -27,7 +27,7 @@ class FormsServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'laravilt-forms');
 
         // Load translations
-        $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'laravilt-forms');
+        $this->loadTranslationsFrom(__DIR__.'/../lang', 'forms');
 
         // Load migrations
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');

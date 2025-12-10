@@ -99,11 +99,12 @@ const alignmentClasses = {
           :key="id"
           :index="index"
           :class="[
-            'flex h-14 w-14 items-center justify-center rounded-lg border-2 bg-background text-center text-lg font-semibold ring-offset-background transition-all duration-200 file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+            'h-14 w-14 rounded-lg border-2 bg-background text-lg font-semibold ring-offset-background transition-all duration-200 file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 p-0',
             error
               ? 'border-destructive hover:border-destructive focus-visible:outline-none focus-visible:border-destructive focus-visible:ring-4 focus-visible:ring-destructive/10'
               : 'border-input hover:border-primary/50 focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 data-[complete]:border-primary data-[complete]:bg-primary/5'
           ]"
+          style="text-align: center; direction: ltr; line-height: 56px;"
         />
       </PinInputRoot>
     </div>

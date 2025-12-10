@@ -47,6 +47,14 @@ class KeyValue extends Field
     }
 
     /**
+     * Alias for addButtonLabel to match FilamentPHP API.
+     */
+    public function addActionLabel(string $label): static
+    {
+        return $this->addButtonLabel($label);
+    }
+
+    /**
      * Enable/disable reordering.
      */
     public function reorderable(bool $condition = true): static
@@ -73,7 +81,7 @@ class KeyValue extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'keyLabel' => $this->keyLabel,
             'valueLabel' => $this->valueLabel,
             'addButtonLabel' => $this->addButtonLabel,
@@ -82,7 +90,7 @@ class KeyValue extends Field
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState() ?? [],
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string

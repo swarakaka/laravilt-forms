@@ -9,6 +9,8 @@
                 :is="getComponent(child)"
                 v-bind="getComponentProps(child)"
                 :value="modelValue?.[child.name]"
+                :model-value="modelValue?.[child.name]"
+                :disabled="props.disabled || child.disabled"
                 @update:model-value="(value) => updateValue(child.name, value)"
             />
         </div>
@@ -18,10 +20,18 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
 
+// Import commonly used components directly for faster modal load
+import TextInput from '../fields/TextInput.vue'
+import Textarea from '../fields/Textarea.vue'
+import Toggle from '../fields/Toggle.vue'
+import Checkbox from '../fields/Checkbox.vue'
+import Select from '../fields/Select.vue'
+
 const props = defineProps<{
     columns: number | Record<string, number>
     schema: Array<any>
     modelValue?: Record<string, any>
+    disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -41,19 +51,22 @@ const updateValue = (name: string, value: any) => {
     emit('update:modelValue', newValue)
 }
 
-// Get component props, excluding value and modelValue since we set them explicitly
+// Get component props, excluding value, modelValue, and disabled since we set them explicitly
 const getComponentProps = (component: any) => {
-    const { value, modelValue, ...props } = component
-    return props
+    const { value, modelValue, disabled, ...rest } = component
+    return rest
 }
 
+// Common components loaded directly, heavy/rare components loaded async
 const componentMap: Record<string, any> = {
-    text_input: defineAsyncComponent(() => import('../fields/TextInput.vue')),
-    textarea: defineAsyncComponent(() => import('../fields/Textarea.vue')),
-    select: defineAsyncComponent(() => import('../fields/Select.vue')),
-    checkbox: defineAsyncComponent(() => import('../fields/Checkbox.vue')),
+    // Directly imported (fast load)
+    text_input: TextInput,
+    textarea: Textarea,
+    toggle: Toggle,
+    checkbox: Checkbox,
+    select: Select,
+    // Async loaded (for less common/heavier components)
     radio: defineAsyncComponent(() => import('../fields/Radio.vue')),
-    toggle: defineAsyncComponent(() => import('../fields/Toggle.vue')),
     toggle_buttons: defineAsyncComponent(() => import('../fields/ToggleButtons.vue')),
     date_picker: defineAsyncComponent(() => import('../fields/DatePicker.vue')),
     time_picker: defineAsyncComponent(() => import('../fields/TimePicker.vue')),
@@ -99,6 +112,11 @@ const gridClasses = computed(() => {
 
 const getColumnSpanClass = (child: any): string => {
     if (!child.columnSpan) return ''
+
+    // Handle 'full' string value from columnSpanFull()
+    if (child.columnSpan === 'full') {
+        return 'col-span-full'
+    }
 
     if (typeof child.columnSpan === 'number') {
         return `col-span-${child.columnSpan}`

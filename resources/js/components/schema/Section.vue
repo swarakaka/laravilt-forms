@@ -1,46 +1,60 @@
 <template>
-    <div class="rounded-lg border p-6 space-y-6">
+    <div class="bg-card text-card-foreground rounded-xl border shadow-sm">
         <!-- Section Header -->
-        <header v-if="heading">
+        <header v-if="heading" :class="['px-6 py-4 transition-all duration-200', isCollapsed ? '' : 'border-b']">
             <div
                 :class="[
-                    'flex items-center gap-2',
-                    collapsible ? 'cursor-pointer' : ''
+                    'flex items-center gap-3',
+                    collapsible ? 'cursor-pointer select-none' : ''
                 ]"
                 @click="collapsible && toggleCollapse()"
             >
-                <component
+                <div
                     v-if="icon && getIconComponent(icon)"
-                    :is="getIconComponent(icon)"
-                    class="h-4 w-4 text-muted-foreground flex-shrink-0"
-                />
-                <h3 class="mb-0.5 text-base font-medium">
-                    {{ heading }}
-                </h3>
+                    class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary flex-shrink-0"
+                >
+                    <component
+                        :is="getIconComponent(icon)"
+                        class="h-5 w-5"
+                    />
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="leading-none font-semibold">
+                        {{ heading }}
+                    </h3>
+                    <p v-if="description" class="mt-1 text-sm text-muted-foreground">
+                        {{ description }}
+                    </p>
+                </div>
                 <ChevronDown
                     v-if="collapsible"
                     :class="[
-                        'h-4 w-4 text-muted-foreground transition-transform ml-auto',
-                        isCollapsed ? '-rotate-90' : ''
+                        'h-4 w-4 text-muted-foreground transition-transform duration-200 ease-out flex-shrink-0',
+                        isCollapsed ? '-rotate-90 rtl:rotate-90' : ''
                     ]"
                 />
             </div>
-            <p v-if="description" class="text-sm text-muted-foreground">
-                {{ description }}
-            </p>
         </header>
 
-        <!-- Section Content -->
-        <div v-show="!isCollapsed" class="space-y-6">
-            <template v-for="(component, index) in schema" :key="component.name || component.id || index">
-                <component
-                    :is="getComponent(component)"
-                    v-bind="getComponentProps(component)"
-                    :value="isSchemaComponent(component) ? undefined : modelValue?.[component.name]"
-                    :modelValue="isSchemaComponent(component) ? modelValue : undefined"
-                    @update:model-value="(value) => handleComponentUpdate(component, value)"
-                />
-            </template>
+        <!-- Section Content with smooth collapse -->
+        <div
+            class="grid transition-all duration-200 ease-out"
+            :style="{ gridTemplateRows: isCollapsed ? '0fr' : '1fr' }"
+        >
+            <div class="overflow-hidden">
+                <div class="p-6 space-y-6">
+                    <template v-for="(component, index) in schema" :key="component.name || component.id || index">
+                        <component
+                            :is="getComponent(component)"
+                            v-bind="getComponentProps(component)"
+                            :value="isSchemaComponent(component) ? undefined : modelValue?.[component.name]"
+                            :model-value="isSchemaComponent(component) ? modelValue : modelValue?.[component.name]"
+                            :disabled="props.disabled || component.disabled"
+                            @update:model-value="(value) => handleComponentUpdate(component, value)"
+                        />
+                    </template>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -58,6 +72,7 @@ const props = defineProps<{
     collapsed?: boolean
     schema?: Array<any>
     modelValue?: Record<string, any>
+    disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -122,9 +137,10 @@ const getComponent = (component: any) => {
     return componentMap[type] || 'div'
 }
 
+// Get component props, excluding value, modelValue, and disabled since we set them explicitly
 const getComponentProps = (component: any) => {
-    const { value, modelValue, ...props } = component
-    return props
+    const { value, modelValue, disabled, ...rest } = component
+    return rest
 }
 
 const isSchemaComponent = (component: any) => {

@@ -255,7 +255,7 @@ class Builder extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'blocks' => $this->getBlocks(),
             'addActionLabel' => $this->evaluate($this->addActionLabel),
             'addActionAlignment' => $this->evaluate($this->addActionAlignment),
@@ -277,7 +277,7 @@ class Builder extends Field
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState() ?? [],
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string

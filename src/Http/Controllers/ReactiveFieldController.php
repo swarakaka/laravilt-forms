@@ -35,13 +35,6 @@ class ReactiveFieldController extends Controller
         $formData = $request->input('data', []);
         $changedField = $request->input('changed_field');
 
-        \Log::info('Reactive Field Update Request', [
-            'controller' => $controllerClass,
-            'method' => $method,
-            'changed_field' => $changedField,
-            'form_data' => $formData,
-        ]);
-
         try {
             // Instantiate the controller
             if (! class_exists($controllerClass)) {
@@ -69,19 +62,28 @@ class ReactiveFieldController extends Controller
             // The controller should return the raw schema before serialization
             $schema = $controller->$method($formData);
 
-            // Check if the result is a Schema object or already serialized array
-            if (is_object($schema) && method_exists($schema, 'toLaraviltProps')) {
-                // Call toLaraviltProps with changedField to execute afterStateUpdated callbacks
+            // Handle different return types from getSchema()
+            // 1. Array containing Schema object(s) - e.g., [$form] from CreateRecord/EditRecord
+            // 2. Schema object directly
+            // 3. Already serialized array (backward compatibility)
+
+            if (is_array($schema) && count($schema) > 0) {
+                $firstItem = $schema[0] ?? null;
+
+                // If first item is a Schema object, process it
+                if (is_object($firstItem) && method_exists($firstItem, 'toLaraviltProps')) {
+                    $schemaData = $firstItem->toLaraviltProps($formData, null, $changedField)['schema'];
+                } else {
+                    // Already serialized array
+                    $schemaData = $schema;
+                }
+            } elseif (is_object($schema) && method_exists($schema, 'toLaraviltProps')) {
+                // Direct Schema object
                 $schemaData = $schema->toLaraviltProps($formData, null, $changedField)['schema'];
             } else {
                 // Already serialized (backward compatibility)
                 $schemaData = $schema;
             }
-
-            \Log::info('Reactive Field Update - Response', [
-                'schema_returned' => is_array($schemaData),
-                'updated_data' => $formData,
-            ]);
 
             // Return the full re-evaluated schema
             return response()->json([
@@ -89,10 +91,6 @@ class ReactiveFieldController extends Controller
                 'data' => $formData,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Reactive Field Update Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
 
             return response()->json([
                 'error' => 'Failed to update fields: '.$e->getMessage(),
@@ -143,7 +141,6 @@ class ReactiveFieldController extends Controller
             // Check if this is a select field with hasDynamicOptions
             if ($componentType === 'select' && $componentName && isset($componentData['hasDynamicOptions']) && $componentData['hasDynamicOptions']) {
                 // This field needs its options re-evaluated
-                // We'll return a placeholder - the actual evaluation happens in DemoController
                 // by re-calling getSchema() which re-evaluates the closures
                 $updatedFields[$componentName] = [
                     'name' => $componentName,
@@ -194,9 +191,6 @@ class ReactiveFieldController extends Controller
                     'options' => $transformedOptions,
                 ];
 
-                \Log::info("Evaluated options for field: {$fieldName}", [
-                    'options_count' => count($transformedOptions),
-                ]);
             }
 
             // Handle nested schema components (Section, Grid, Tabs)
@@ -215,7 +209,7 @@ class ReactiveFieldController extends Controller
                     if (method_exists($tab, 'getSchema')) {
                         $tabSchema = $tab->getSchema();
                         if (is_array($tabSchema)) {
-                            $tabFields = $this->evaluateSchemaComponents($tabSchema, $get, $set);
+                            $this->evaluateSchemaComponents($tabSchema, $get, $set);
                             $updatedFields = array_merge($updatedFields, $nestedFields);
                         }
                     }
@@ -241,19 +235,6 @@ class ReactiveFieldController extends Controller
             // Skip if not an array
             if (! is_array($component)) {
                 continue;
-            }
-
-            $componentName = $component['name'] ?? null;
-
-            // Check if this is the field that changed
-            if ($componentName === $fieldName && isset($component['afterStateUpdated'])) {
-                // The afterStateUpdated is not serialized to frontend
-                // We need to get it from the component instance
-                // For now, we'll skip this as the callback is a closure and can't be serialized
-                \Log::info('Found afterStateUpdated callback', [
-                    'field' => $fieldName,
-                    'note' => 'Callbacks must be executed during schema generation',
-                ]);
             }
 
             // Handle nested schemas (tabs, sections, grids)

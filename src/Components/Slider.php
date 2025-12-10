@@ -87,7 +87,7 @@ class Slider extends Field
 
     protected function getVueProps(): array
     {
-        return array_merge([
+        return [
             'min' => $this->min,
             'max' => $this->max,
             'step' => $this->step,
@@ -96,7 +96,7 @@ class Slider extends Field
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState() ?? $this->min,
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string

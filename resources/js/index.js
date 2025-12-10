@@ -4,7 +4,7 @@
 // import '../css/forms.css';
 
 // Export form renderer and field wrapper
-export { default as FormRenderer } from './components/FormRenderer.vue';
+export { default as Form } from './components/Form.vue';
 export { default as FieldWrapper } from './components/FieldWrapper.vue';
 
 // Export field components
@@ -42,7 +42,7 @@ export { default as Section } from './components/schema/Section.vue';
 export { default as Grid } from './components/schema/Grid.vue';
 
 // Import all components for registration
-import LaraviltFormRenderer from './components/FormRenderer.vue';
+import LaraviltForm from './components/Form.vue';
 import LaraviltFieldWrapper from './components/FieldWrapper.vue';
 import LaraviltTextInput from './components/fields/TextInput.vue';
 import LaraviltTextarea from './components/fields/Textarea.vue';
@@ -78,7 +78,7 @@ import LaraviltGrid from './components/schema/Grid.vue';
 // Auto-register components if Vue instance is available
 if (typeof window !== 'undefined' && window.Vue) {
     const components = {
-        FormRenderer: LaraviltFormRenderer,
+        Form: LaraviltForm,
         FieldWrapper: LaraviltFieldWrapper,
         TextInput: LaraviltTextInput,
         Textarea: LaraviltTextarea,
@@ -122,7 +122,7 @@ if (typeof window !== 'undefined' && window.Vue) {
 export default {
     install(app) {
         // Register all components globally
-        app.component('laravilt-form-renderer', LaraviltFormRenderer);
+        app.component('laravilt-form', LaraviltForm);
         app.component('laravilt-field-wrapper', LaraviltFieldWrapper);
 
         // Field components

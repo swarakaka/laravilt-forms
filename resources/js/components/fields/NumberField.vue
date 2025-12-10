@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   NumberFieldRoot,
   NumberFieldInput,
@@ -48,6 +48,13 @@ const numberValue = ref<number | undefined>(
   props.modelValue ?? props.value ?? undefined
 )
 
+// Watch for external value changes (e.g., when editing)
+watch(() => props.modelValue ?? props.value, (newValue) => {
+  if (newValue !== null && newValue !== undefined) {
+    numberValue.value = newValue
+  }
+}, { immediate: true })
+
 const updateValue = (value: number | undefined) => {
   numberValue.value = value
   emit('update:modelValue', value ?? null)
@@ -93,7 +100,7 @@ const updateValue = (value: number | undefined) => {
           type="button"
           variant="outline"
           size="icon"
-          class="h-10 w-10 rounded-r-none border-r-0"
+          class="h-10 w-10 rounded-e-none border-e-0"
           :disabled="disabled"
         >
           <Minus class="h-4 w-4" />
@@ -104,7 +111,7 @@ const updateValue = (value: number | undefined) => {
       <div class="relative flex-1">
         <span
           v-if="prefix"
-          class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none"
+          class="absolute start-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none"
         >
           {{ prefix }}
         </span>
@@ -112,14 +119,14 @@ const updateValue = (value: number | undefined) => {
         <NumberFieldInput
           class="flex h-10 w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-center"
           :class="{
-            'pl-8': prefix,
-            'pr-8': suffix,
+            'ps-8': prefix,
+            'pe-8': suffix,
           }"
         />
 
         <span
           v-if="suffix"
-          class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none"
+          class="absolute end-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none"
         >
           {{ suffix }}
         </span>
@@ -131,7 +138,7 @@ const updateValue = (value: number | undefined) => {
           type="button"
           variant="outline"
           size="icon"
-          class="h-10 w-10 rounded-l-none border-l-0"
+          class="h-10 w-10 rounded-s-none border-s-0"
           :disabled="disabled"
         >
           <Plus class="h-4 w-4" />

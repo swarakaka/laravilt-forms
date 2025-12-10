@@ -19,6 +19,10 @@ import KeyValue from './KeyValue.vue'
 import ColorPicker from './ColorPicker.vue'
 import RichEditor from './RichEditor.vue'
 import CodeEditor from './CodeEditor.vue'
+import { useLocalization } from '@/composables/useLocalization'
+
+// Initialize localization
+const { trans } = useLocalization()
 
 interface FieldSchema {
   component: string
@@ -47,6 +51,11 @@ interface Props {
   suffixIcon?: string
   prefixIconColor?: string
   suffixIconColor?: string
+  // Text labels for i18n support
+  itemLabel?: string
+  itemsLabel?: string
+  minLabel?: string
+  maxLabel?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -59,12 +68,24 @@ const props = withDefaults(defineProps<Props>(), {
   cloneable: false,
   deletable: true,
   disabled: false,
+  itemLabel: 'Item',
+  itemsLabel: 'item(s)',
+  minLabel: 'Min:',
+  maxLabel: 'Max:',
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: any[]]
   'update:value': [value: any[]]
 }>()
+
+// Computed translated labels
+const translatedAddButtonLabel = computed(() => props.addButtonLabel !== 'Add' ? props.addButtonLabel : trans('repeater.add_button_label'))
+const translatedDeleteButtonLabel = computed(() => props.deleteButtonLabel !== 'Delete' ? props.deleteButtonLabel : trans('repeater.delete_button_label'))
+const translatedItemLabel = computed(() => props.itemLabel !== 'Item' ? props.itemLabel : trans('repeater.item_label'))
+const translatedItemsLabel = computed(() => props.itemsLabel !== 'item(s)' ? props.itemsLabel : trans('repeater.items_label'))
+const translatedMinLabel = computed(() => props.minLabel !== 'Min:' ? props.minLabel : trans('repeater.min_label'))
+const translatedMaxLabel = computed(() => props.maxLabel !== 'Max:' ? props.maxLabel : trans('repeater.max_label'))
 
 // Internal state for repeater items
 const internalItems = ref<any[]>([])
@@ -309,18 +330,18 @@ const getFieldValue = (itemIndex: number, fieldName: string) => {
           <button
             v-if="collapsible"
             type="button"
-            class="flex-1 flex items-center gap-2 text-sm font-medium text-left hover:text-foreground transition-colors"
+            class="flex-1 flex items-center gap-2 text-sm font-medium text-start hover:text-foreground transition-colors"
             @click="toggleItem(index)"
           >
             <ChevronDown
               class="h-4 w-4 transition-transform"
               :class="{ '-rotate-90': !isOpen(index) }"
             />
-            <span>Item {{ index + 1 }}</span>
+            <span>{{ translatedItemLabel }} {{ index + 1 }}</span>
           </button>
 
           <span v-else class="flex-1 text-sm font-medium text-foreground">
-            Item {{ index + 1 }}
+            {{ translatedItemLabel }} {{ index + 1 }}
           </span>
 
           <!-- Action buttons -->
@@ -402,15 +423,15 @@ const getFieldValue = (itemIndex: number, fieldName: string) => {
       @click="addItem"
     >
       <Plus class="h-4 w-4" />
-      <span>{{ addButtonLabel }}</span>
+      <span>{{ translatedAddButtonLabel }}</span>
     </Button>
 
     <!-- Validation hints -->
     <div v-if="minItems || maxItems" class="flex items-center gap-1 text-xs text-muted-foreground px-1">
-      <span v-if="minItems">Min: {{ minItems }}</span>
+      <span v-if="minItems">{{ translatedMinLabel }} {{ minItems }}</span>
       <span v-if="minItems && maxItems">•</span>
-      <span v-if="maxItems">Max: {{ maxItems }}</span>
-      <span v-if="internalItems.length > 0" class="ml-auto">{{ internalItems.length }} item(s)</span>
+      <span v-if="maxItems">{{ translatedMaxLabel }} {{ maxItems }}</span>
+      <span v-if="internalItems.length > 0" class="ml-auto">{{ internalItems.length }} {{ translatedItemsLabel }}</span>
     </div>
 
     <!-- Helper text -->

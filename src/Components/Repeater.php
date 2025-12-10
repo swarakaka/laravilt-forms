@@ -144,7 +144,7 @@ class Repeater extends Field
             return $component;
         }, $this->getSchema());
 
-        return array_merge([
+        return [
             'schema' => $serializedSchema,
             'addButtonLabel' => $this->addButtonLabel,
             'deleteButtonLabel' => $this->deleteButtonLabel,
@@ -157,7 +157,7 @@ class Repeater extends Field
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState() ?? [],
-        ], $this->getIconProps());
+        ];
     }
 
     protected function getFlutterWidget(): string

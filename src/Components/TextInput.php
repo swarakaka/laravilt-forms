@@ -36,6 +36,8 @@ class TextInput extends Field
 
     protected bool $showCharacterCount = false;
 
+    protected int|float|null $step = null;
+
     /**
      * Set the input type.
      */
@@ -287,6 +289,24 @@ class TextInput extends Field
     }
 
     /**
+     * Set the step value for numeric inputs.
+     */
+    public function step(int|float $step): static
+    {
+        $this->step = $step;
+
+        return $this;
+    }
+
+    /**
+     * Get the step value.
+     */
+    public function getStep(): int|float|null
+    {
+        return $this->step;
+    }
+
+    /**
      * Serialize component for Laravilt (Blade + Vue.js).
      */
     public function toLaraviltProps(): array
@@ -302,6 +322,7 @@ class TextInput extends Field
             'pattern' => $this->getPattern(),
             'mask' => $this->getMask(),
             'showCharacterCount' => $this->shouldShowCharacterCount(),
+            'step' => $this->getStep(),
             'isLive' => $this->isLive(),
             'isLazy' => $this->isLazy(),
             'liveDebounce' => $this->getLiveDebounce(),

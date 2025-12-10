@@ -158,7 +158,7 @@ trait HasValidation
     public function unique(?string $table = null, string $column = 'NULL', ?string $ignoreId = null, bool $ignoreRecord = false): static
     {
         // If called without params, just mark as unique (for frontend validation hint)
-        if ($table === null && !$ignoreRecord) {
+        if ($table === null && ! $ignoreRecord) {
             $this->meta['unique'] = true;
 
             return $this;

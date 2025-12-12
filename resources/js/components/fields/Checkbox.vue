@@ -54,9 +54,6 @@
 
         <!-- Checkbox List (when options provided) -->
         <div v-else>
-            <Label v-if="label" class="mb-3 block text-sm font-medium">{{
-                label
-            }}</Label>
             <div :class="inline ? 'flex flex-wrap gap-4' : 'space-y-3'">
                 <div
                     v-for="(optLabel, optValue) in options"

@@ -113,13 +113,14 @@ const gridClass = () => {
 
       <!-- Checkbox -->
       <BaseCheckbox
+        :id="`checkbox-${option.value}`"
         :checked="isChecked(option.value)"
         :disabled="disabled || option.disabled"
         @update:checked="(checked) => handleChange(option.value, checked)"
       />
 
       <!-- Label -->
-      <Label class="text-sm font-medium leading-none cursor-pointer">
+      <Label :for="`checkbox-${option.value}`" class="text-sm font-medium leading-none cursor-pointer">
         {{ option.label }}
       </Label>
 

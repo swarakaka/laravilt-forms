@@ -631,7 +631,19 @@ class Select extends Field
             }
 
             // Otherwise, evaluate the closure (simple closure with no params)
-            return ($this->options)();
+            $result = ($this->options)();
+
+            // Convert Collection to array if needed
+            if ($result instanceof \Illuminate\Support\Collection) {
+                return $result->all();
+            }
+
+            return is_array($result) ? $result : [];
+        }
+
+        // Convert Collection to array if needed
+        if ($this->options instanceof \Illuminate\Support\Collection) {
+            return $this->options->all();
         }
 
         return $this->options;

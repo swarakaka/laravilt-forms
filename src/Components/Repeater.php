@@ -26,6 +26,14 @@ class Repeater extends Field
 
     protected ?int $maxItems = null;
 
+    protected int $defaultItems = 0;
+
+    protected ?string $relationshipName = null;
+
+    protected ?int $columns = null;
+
+    protected Closure|string|null $itemLabel = null;
+
     /**
      * Set the field schema.
      */
@@ -117,6 +125,86 @@ class Repeater extends Field
     }
 
     /**
+     * Set the relationship name for HasMany relationships.
+     */
+    public function relationship(?string $name = null): static
+    {
+        $this->relationshipName = $name ?? $this->name;
+
+        return $this;
+    }
+
+    /**
+     * Get the relationship name.
+     */
+    public function getRelationshipName(): ?string
+    {
+        return $this->relationshipName;
+    }
+
+    /**
+     * Check if this repeater is for a relationship.
+     */
+    public function isRelationship(): bool
+    {
+        return $this->relationshipName !== null;
+    }
+
+    /**
+     * Set the number of columns for the grid layout.
+     */
+    public function columns(?int $columns): static
+    {
+        $this->columns = $columns;
+
+        return $this;
+    }
+
+    /**
+     * Set the default number of items.
+     */
+    public function defaultItems(int $count): static
+    {
+        $this->defaultItems = $count;
+
+        return $this;
+    }
+
+    /**
+     * Alias for addButtonLabel for Filament compatibility.
+     */
+    public function addActionLabel(string $label): static
+    {
+        return $this->addButtonLabel($label);
+    }
+
+    /**
+     * Set the item label callback or string.
+     */
+    public function itemLabel(Closure|string|null $label): static
+    {
+        $this->itemLabel = $label;
+
+        return $this;
+    }
+
+    /**
+     * Get the item label for a given state.
+     */
+    public function getItemLabel(array $state): ?string
+    {
+        if ($this->itemLabel === null) {
+            return null;
+        }
+
+        if ($this->itemLabel instanceof Closure) {
+            return ($this->itemLabel)($state);
+        }
+
+        return $this->itemLabel;
+    }
+
+    /**
      * Get the schema array.
      */
     public function getSchema(): array
@@ -154,6 +242,9 @@ class Repeater extends Field
             'deletable' => $this->deletable,
             'minItems' => $this->minItems,
             'maxItems' => $this->maxItems,
+            'defaultItems' => $this->defaultItems,
+            'columns' => $this->columns,
+            'relationship' => $this->relationshipName,
             'required' => $this->isRequired(),
             'rules' => $this->getValidationRules(),
             'defaultValue' => $this->getState() ?? [],

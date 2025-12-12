@@ -45,12 +45,6 @@ class ReactiveFieldController extends Controller
 
             $controller = app($controllerClass);
 
-            if (! method_exists($controller, $method)) {
-                return response()->json([
-                    'error' => 'Method not found',
-                ], 404);
-            }
-
             // Temporarily add formData to the request so Select components can access it
             $request->merge(['formData' => $formData]);
 
@@ -58,9 +52,18 @@ class ReactiveFieldController extends Controller
             $get = new Get($formData);
             $set = new Set($formData);
 
+            // Prefer getFormSchema for modal forms (ManageRecords), fall back to getSchema
+            $schemaMethod = method_exists($controller, 'getFormSchema') ? 'getFormSchema' : $method;
+
+            if (! method_exists($controller, $schemaMethod)) {
+                return response()->json([
+                    'error' => 'Method not found',
+                ], 404);
+            }
+
             // Call the method with formData parameter and pass changedField for afterStateUpdated
             // The controller should return the raw schema before serialization
-            $schema = $controller->$method($formData);
+            $schema = $controller->$schemaMethod($formData);
 
             // Handle different return types from getSchema()
             // 1. Array containing Schema object(s) - e.g., [$form] from CreateRecord/EditRecord
@@ -72,6 +75,7 @@ class ReactiveFieldController extends Controller
 
                 // If first item is a Schema object, process it
                 if (is_object($firstItem) && method_exists($firstItem, 'toLaraviltProps')) {
+                    // formData is passed by reference, so afterStateUpdated callbacks will modify it
                     $schemaData = $firstItem->toLaraviltProps($formData, null, $changedField)['schema'];
                 } else {
                     // Already serialized array
@@ -79,13 +83,15 @@ class ReactiveFieldController extends Controller
                 }
             } elseif (is_object($schema) && method_exists($schema, 'toLaraviltProps')) {
                 // Direct Schema object
+                // formData is passed by reference, so afterStateUpdated callbacks will modify it
                 $schemaData = $schema->toLaraviltProps($formData, null, $changedField)['schema'];
             } else {
                 // Already serialized (backward compatibility)
                 $schemaData = $schema;
             }
 
-            // Return the full re-evaluated schema
+            // Return the full re-evaluated schema with updated data
+            // formData was modified by reference in toLaraviltProps if afterStateUpdated callbacks ran
             return response()->json([
                 'schema' => $schemaData,
                 'data' => $formData,

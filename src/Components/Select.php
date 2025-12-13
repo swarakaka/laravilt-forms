@@ -811,11 +811,11 @@ class Select extends Field
 
         // Ensure selected value(s) are always included in options
         $selectedValues = $this->getSelectedValues();
-        if (!empty($selectedValues)) {
+        if (! empty($selectedValues)) {
             $loadedIds = $records->pluck($relatedModel->getKeyName())->toArray();
             $missingIds = array_diff($selectedValues, array_map('strval', $loadedIds));
 
-            if (!empty($missingIds)) {
+            if (! empty($missingIds)) {
                 // Fetch missing selected records
                 $missingRecords = $relatedModel::whereIn($relatedModel->getKeyName(), $missingIds)->get();
                 $records = $records->merge($missingRecords);
@@ -833,9 +833,9 @@ class Select extends Field
                 $label = $record->{$titleAttribute};
                 if ($titleAttribute === 'email') {
                     if ($record->first_name || $record->last_name) {
-                        $label = trim($record->first_name . ' ' . $record->last_name) . ' (' . $record->email . ')';
+                        $label = trim($record->first_name.' '.$record->last_name).' ('.$record->email.')';
                     } elseif ($record->name) {
-                        $label = $record->name . ' (' . $record->email . ')';
+                        $label = $record->name.' ('.$record->email.')';
                     }
                 }
                 $options[$record->getKey()] = $label;
@@ -911,7 +911,7 @@ class Select extends Field
             \Log::info('[Select] getModelFromPanelResource', [
                 'hasPanel' => $panel !== null,
             ]);
-            if (!$panel) {
+            if (! $panel) {
                 return null;
             }
 
@@ -939,7 +939,7 @@ class Select extends Field
                 }
             }
         } catch (\Exception $e) {
-            \Log::warning('[Select] getModelFromPanelResource error: ' . $e->getMessage());
+            \Log::warning('[Select] getModelFromPanelResource error: '.$e->getMessage());
         }
 
         return null;
@@ -1133,8 +1133,8 @@ class Select extends Field
                     'relationship' => $this->relationship,
                     'titleAttribute' => $this->titleAttribute ?? 'name',
                 ]);
-                $props['relationshipSearchUrl'] = '_select/search?' . $searchParams;
-                $props['relationshipOptionsUrl'] = '_select/options?' . $searchParams;
+                $props['relationshipSearchUrl'] = '_select/search?'.$searchParams;
+                $props['relationshipOptionsUrl'] = '_select/options?'.$searchParams;
                 $props['relationshipModel'] = $modelClass;
             }
 
@@ -1217,8 +1217,8 @@ class Select extends Field
                     'relationship' => $this->relationship,
                     'titleAttribute' => $this->titleAttribute ?? 'name',
                 ]);
-                $props['relationshipSearchUrl'] = '_select/search?' . $searchParams;
-                $props['relationshipOptionsUrl'] = '_select/options?' . $searchParams;
+                $props['relationshipSearchUrl'] = '_select/search?'.$searchParams;
+                $props['relationshipOptionsUrl'] = '_select/options?'.$searchParams;
                 $props['relationshipModel'] = $modelClass;
             }
 

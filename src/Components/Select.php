@@ -27,6 +27,28 @@ class Select extends Field
 
     protected ?string $model = null;
 
+    /**
+     * The form's model class (set by parent Form).
+     *
+     * @var class-string|null
+     */
+    protected ?string $formModelClass = null;
+
+    /**
+     * The resource slug (set by parent Schema/Resource).
+     */
+    protected ?string $resourceSlug = null;
+
+    /**
+     * The relation manager class (for Select fields inside relation managers).
+     */
+    protected ?string $relationManagerClass = null;
+
+    /**
+     * Whether there are more options available (set when closure results are limited).
+     */
+    protected bool $hasMoreOptions = false;
+
     protected ?string $loadingMessage = null;
 
     protected ?string $noSearchResultsMessage = null;
@@ -591,6 +613,26 @@ class Select extends Field
     }
 
     /**
+     * Get the current selected value(s) as an array.
+     *
+     * @return array<int, string|int>
+     */
+    protected function getSelectedValues(): array
+    {
+        $state = $this->getState();
+
+        if ($state === null || $state === '') {
+            return [];
+        }
+
+        if (is_array($state)) {
+            return array_filter($state, fn ($v) => $v !== null && $v !== '');
+        }
+
+        return [(string) $state];
+    }
+
+    /**
      * Get the resolved options array.
      *
      * @return array<string|int, string>
@@ -635,10 +677,39 @@ class Select extends Field
 
             // Convert Collection to array if needed
             if ($result instanceof \Illuminate\Support\Collection) {
-                return $result->all();
+                $result = $result->all();
             }
 
-            return is_array($result) ? $result : [];
+            if (! is_array($result)) {
+                return [];
+            }
+
+            // If result has many items, limit to optionsLimit (default 50)
+            // Frontend will handle load more / search
+            $limit = $this->optionsLimit ?? 50;
+            if (count($result) > $limit) {
+                $this->hasMoreOptions = true;
+
+                // Get current selected value(s) to ensure they're included
+                $selectedValues = $this->getSelectedValues();
+
+                // Take initial limited options
+                $limitedOptions = array_slice($result, 0, $limit, true);
+
+                // Ensure selected values are included in the limited options
+                if (! empty($selectedValues)) {
+                    foreach ($selectedValues as $selectedValue) {
+                        // If selected value exists in full result but not in limited options, add it
+                        if (isset($result[$selectedValue]) && ! isset($limitedOptions[$selectedValue])) {
+                            $limitedOptions[$selectedValue] = $result[$selectedValue];
+                        }
+                    }
+                }
+
+                return $limitedOptions;
+            }
+
+            return $result;
         }
 
         // Convert Collection to array if needed
@@ -702,13 +773,176 @@ class Select extends Field
     }
 
     /**
+     * Load limited options from the relationship (for initial display).
+     *
+     * @param  int  $limit  Maximum number of options to load
+     * @return array<string|int, string>
+     */
+    protected function loadRelationshipOptionsLimited(int $limit = 50): array
+    {
+        $modelClass = $this->getModelClass();
+
+        if (! $modelClass) {
+            return [];
+        }
+
+        $relationshipMethod = $this->relationship;
+        $titleAttribute = $this->titleAttribute ?? 'name';
+
+        // Create a new model instance to access the relationship
+        $modelInstance = new $modelClass;
+
+        if (! method_exists($modelInstance, $relationshipMethod)) {
+            return [];
+        }
+
+        $relation = $modelInstance->{$relationshipMethod}();
+        $relatedModel = $relation->getRelated();
+
+        // Query limited records
+        $query = $relatedModel::query();
+
+        // Apply custom query modifications if provided
+        if ($this->modifyQueryUsing) {
+            $query = ($this->modifyQueryUsing)($query);
+        }
+
+        $records = $query->limit($limit)->get();
+
+        // Ensure selected value(s) are always included in options
+        $selectedValues = $this->getSelectedValues();
+        if (!empty($selectedValues)) {
+            $loadedIds = $records->pluck($relatedModel->getKeyName())->toArray();
+            $missingIds = array_diff($selectedValues, array_map('strval', $loadedIds));
+
+            if (!empty($missingIds)) {
+                // Fetch missing selected records
+                $missingRecords = $relatedModel::whereIn($relatedModel->getKeyName(), $missingIds)->get();
+                $records = $records->merge($missingRecords);
+            }
+        }
+
+        // Build options array [id => title]
+        $options = [];
+        foreach ($records as $record) {
+            // Use custom label callback if provided
+            if ($this->getOptionLabelFromRecordUsing) {
+                $options[$record->getKey()] = ($this->getOptionLabelFromRecordUsing)($record);
+            } else {
+                // Build label - enhance for email fields
+                $label = $record->{$titleAttribute};
+                if ($titleAttribute === 'email') {
+                    if ($record->first_name || $record->last_name) {
+                        $label = trim($record->first_name . ' ' . $record->last_name) . ' (' . $record->email . ')';
+                    } elseif ($record->name) {
+                        $label = $record->name . ' (' . $record->email . ')';
+                    }
+                }
+                $options[$record->getKey()] = $label;
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * Set the form's model class (called by parent Form).
+     *
+     * @param  class-string  $model
+     */
+    public function formModel(string $model): static
+    {
+        $this->formModelClass = $model;
+
+        return $this;
+    }
+
+    /**
+     * Set the resource slug (called by parent Schema/Resource).
+     */
+    public function resourceSlug(string $slug): static
+    {
+        $this->resourceSlug = $slug;
+
+        return $this;
+    }
+
+    /**
+     * Set the relation manager class (for Select fields inside relation managers).
+     */
+    public function relationManagerClass(string $class): static
+    {
+        $this->relationManagerClass = $class;
+
+        return $this;
+    }
+
+    /**
      * Get the model class name for this component.
      */
     protected function getModelClass(): ?string
     {
-        // Try to get model from parent form/schema
-        // This will be set when the component is part of a resource form
-        return $this->model ?? $this->getParentModel();
+        // Priority: explicit model > form model class > panel resource model > parent model
+        if ($this->model) {
+            return $this->model;
+        }
+
+        if ($this->formModelClass) {
+            return $this->formModelClass;
+        }
+
+        // Try to get model from Panel's current resource context
+        $resourceModel = $this->getModelFromPanelResource();
+        if ($resourceModel) {
+            return $resourceModel;
+        }
+
+        return $this->getParentModel();
+    }
+
+    /**
+     * Try to get model class from the Panel's current resource context.
+     */
+    protected function getModelFromPanelResource(): ?string
+    {
+        try {
+            // Get current panel
+            $panel = \Laravilt\Panel\Facades\Panel::getCurrent();
+            \Log::info('[Select] getModelFromPanelResource', [
+                'hasPanel' => $panel !== null,
+            ]);
+            if (!$panel) {
+                return null;
+            }
+
+            // Get current resource from URL
+            $currentPath = request()->path();
+            $pathParts = explode('/', $currentPath);
+            \Log::info('[Select] Checking path', [
+                'currentPath' => $currentPath,
+                'pathParts' => $pathParts,
+            ]);
+
+            // Find resource by matching URL slug
+            foreach ($panel->getResources() as $resourceClass) {
+                $slug = $resourceClass::getSlug();
+                if (in_array($slug, $pathParts)) {
+                    $model = $resourceClass::getModel();
+                    \Log::info('[Select] Found matching resource', [
+                        'resourceClass' => $resourceClass,
+                        'slug' => $slug,
+                        'model' => $model,
+                    ]);
+                    if ($model) {
+                        return $model;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('[Select] getModelFromPanelResource error: ' . $e->getMessage());
+        }
+
+        return null;
     }
 
     /**
@@ -716,8 +950,11 @@ class Select extends Field
      */
     protected function getParentModel(): ?string
     {
-        // This will be implemented when we need to traverse parent components
-        // For now, we'll rely on the resource setting the model via the evaluate method
+        // Try to infer from evaluation record if available
+        if ($this->evaluationRecord && is_object($this->evaluationRecord)) {
+            return get_class($this->evaluationRecord);
+        }
+
         return null;
     }
 
@@ -887,8 +1124,23 @@ class Select extends Field
         if (! $this->relationship || ($this->relationship && ! $this->searchable)) {
             $props['options'] = $this->transformOptions($this->getResolvedOptions());
         } else {
-            // For searchable relationship selects, pass empty options (will be loaded via API)
-            $props['options'] = [];
+            // For searchable relationship selects, pass search URL and params
+            $modelClass = $this->getModelClass();
+            if ($modelClass) {
+                // Build search URL with model and relationship params
+                $searchParams = http_build_query([
+                    'model' => $modelClass,
+                    'relationship' => $this->relationship,
+                    'titleAttribute' => $this->titleAttribute ?? 'name',
+                ]);
+                $props['relationshipSearchUrl'] = '_select/search?' . $searchParams;
+                $props['relationshipOptionsUrl'] = '_select/options?' . $searchParams;
+                $props['relationshipModel'] = $modelClass;
+            }
+
+            // Load initial options (limited) for display
+            $initialOptions = $this->loadRelationshipOptionsLimited(50);
+            $props['options'] = $this->transformOptions($initialOptions);
         }
 
         // Check if options are grouped
@@ -932,9 +1184,8 @@ class Select extends Field
             $closureDependencies = $this->extractClosureDependencies($this->options);
         }
 
-        return array_merge(parent::toLaraviltProps(), [
+        $props = array_merge(parent::toLaraviltProps(), [
             'name' => $this->name,
-            'options' => $this->transformOptions($this->getResolvedOptions()),
             'searchable' => $this->searchable,
             'multiple' => $this->multiple,
             'native' => $this->native,
@@ -955,5 +1206,46 @@ class Select extends Field
             'liveDebounce' => $this->liveDebounce,
             'hasDynamicOptions' => $hasDynamicOptions,
         ]);
+
+        // Handle relationship selects with searchable
+        if ($this->relationship && $this->searchable) {
+            $modelClass = $this->getModelClass();
+            if ($modelClass) {
+                // Build search URL with model and relationship params
+                $searchParams = http_build_query([
+                    'model' => $modelClass,
+                    'relationship' => $this->relationship,
+                    'titleAttribute' => $this->titleAttribute ?? 'name',
+                ]);
+                $props['relationshipSearchUrl'] = '_select/search?' . $searchParams;
+                $props['relationshipOptionsUrl'] = '_select/options?' . $searchParams;
+                $props['relationshipModel'] = $modelClass;
+            }
+
+            // Load initial limited options
+            $props['options'] = $this->transformOptions($this->loadRelationshipOptionsLimited(50));
+        } else {
+            // Non-relationship or non-searchable - load all options
+            $props['options'] = $this->transformOptions($this->getResolvedOptions());
+            // Check if there are more options (set by getResolvedOptions when closure returns many items)
+            $props['hasMoreOptions'] = $this->hasMoreOptions;
+
+            // For closure-based options, always provide the search URL
+            // This allows fetching selected option labels and pagination
+            if ($this->options instanceof \Closure) {
+                $props['closureOptionsUrl'] = '_select/search';
+                $props['fieldName'] = $this->name;
+
+                // Pass context for full closure evaluation (search/pagination)
+                if ($this->resourceSlug) {
+                    $props['resourceSlug'] = $this->resourceSlug;
+                }
+                if ($this->relationManagerClass) {
+                    $props['relationManager'] = $this->relationManagerClass;
+                }
+            }
+        }
+
+        return $props;
     }
 }

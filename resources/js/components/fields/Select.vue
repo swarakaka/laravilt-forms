@@ -82,6 +82,12 @@ interface Props {
   dependsOn?: string[] // Fields this select depends on for reactive loading
   optionsUrl?: string // API endpoint for loading dynamic options
   hasDynamicOptions?: boolean // Whether options are closure-based (evaluated server-side)
+  relationshipSearchUrl?: string // API endpoint for searching relationship options
+  relationshipOptionsUrl?: string // API endpoint for loading specific relationship options by ID
+  relationshipModel?: string // The parent model class for relationship selects
+  hasMoreOptions?: boolean // Whether there are more options available (closure-based options)
+  closureOptionsUrl?: string // API endpoint for loading more closure-based options
+  relationManager?: string // Relation manager class name (for Select inside relation managers)
   live?: boolean | string | number // Reactive mode
   isLive?: boolean // Whether field triggers reactive updates
   isLazy?: boolean // Whether field triggers debounced reactive updates
@@ -156,23 +162,23 @@ const showEditModal = ref(false)
 const editingOptionId = ref<string | null>(null)
 
 // Computed translated labels
-const translatedPlaceholder = computed(() => props.placeholder !== 'Select an option' ? props.placeholder : trans('select.placeholder'))
-const translatedLoadingMessage = computed(() => props.loadingMessage !== 'Loading options...' ? props.loadingMessage : trans('select.loading_message'))
-const translatedNoSearchResultsMessage = computed(() => props.noSearchResultsMessage !== 'No results found' ? props.noSearchResultsMessage : trans('select.no_search_results_message'))
-const translatedSearchPrompt = computed(() => props.searchPrompt !== 'Start typing to search...' ? props.searchPrompt : trans('select.search_prompt'))
-const translatedSearchingMessage = computed(() => props.searchingMessage !== 'Searching...' ? props.searchingMessage : trans('select.searching_message'))
-const translatedCreateModalTitle = computed(() => props.createModalTitle !== 'Create New Option' ? props.createModalTitle : trans('select.create_modal_title'))
-const translatedCreateModalDescription = computed(() => props.createModalDescription !== 'Create a new option for this field. It will be automatically selected after creation.' ? props.createModalDescription : trans('select.create_modal_description'))
-const translatedEditModalTitle = computed(() => props.editModalTitle !== 'Edit Option' ? props.editModalTitle : trans('select.edit_modal_title'))
-const translatedEditModalDescription = computed(() => props.editModalDescription !== 'Update the option details. Changes will be reflected immediately.' ? props.editModalDescription : trans('select.edit_modal_description'))
-const translatedCancelButtonLabel = computed(() => props.cancelButtonLabel !== 'Cancel' ? props.cancelButtonLabel : trans('select.cancel_button_label'))
-const translatedCreateButtonLabel = computed(() => props.createButtonLabel !== 'Create' ? props.createButtonLabel : trans('select.create_button_label'))
-const translatedCreatingButtonLabel = computed(() => props.creatingButtonLabel !== 'Creating...' ? props.creatingButtonLabel : trans('select.creating_button_label'))
-const translatedSaveChangesButtonLabel = computed(() => props.saveChangesButtonLabel !== 'Save Changes' ? props.saveChangesButtonLabel : trans('select.save_changes_button_label'))
-const translatedSavingButtonLabel = computed(() => props.savingButtonLabel !== 'Saving...' ? props.savingButtonLabel : trans('select.saving_button_label'))
-const translatedScrollForMoreLabel = computed(() => props.scrollForMoreLabel !== 'Scroll for more' ? props.scrollForMoreLabel : trans('select.scroll_for_more_label'))
-const translatedSearchPlaceholder = computed(() => props.searchPlaceholder !== 'Search...' ? props.searchPlaceholder : trans('select.search_placeholder'))
-const translatedTryAdjustingSearchLabel = computed(() => props.tryAdjustingSearchLabel !== 'Try adjusting your search' ? props.tryAdjustingSearchLabel : trans('select.try_adjusting_search_label'))
+const translatedPlaceholder = computed(() => props.placeholder !== 'Select an option' ? props.placeholder : trans('forms::forms.select.placeholder'))
+const translatedLoadingMessage = computed(() => props.loadingMessage !== 'Loading options...' ? props.loadingMessage : trans('forms::forms.select.loading_message'))
+const translatedNoSearchResultsMessage = computed(() => props.noSearchResultsMessage !== 'No results found' ? props.noSearchResultsMessage : trans('forms::forms.select.no_search_results_message'))
+const translatedSearchPrompt = computed(() => props.searchPrompt !== 'Start typing to search...' ? props.searchPrompt : trans('forms::forms.select.search_prompt'))
+const translatedSearchingMessage = computed(() => props.searchingMessage !== 'Searching...' ? props.searchingMessage : trans('forms::forms.select.searching_message'))
+const translatedCreateModalTitle = computed(() => props.createModalTitle !== 'Create New Option' ? props.createModalTitle : trans('forms::forms.select.create_modal_title'))
+const translatedCreateModalDescription = computed(() => props.createModalDescription !== 'Create a new option for this field. It will be automatically selected after creation.' ? props.createModalDescription : trans('forms::forms.select.create_modal_description'))
+const translatedEditModalTitle = computed(() => props.editModalTitle !== 'Edit Option' ? props.editModalTitle : trans('forms::forms.select.edit_modal_title'))
+const translatedEditModalDescription = computed(() => props.editModalDescription !== 'Update the option details. Changes will be reflected immediately.' ? props.editModalDescription : trans('forms::forms.select.edit_modal_description'))
+const translatedCancelButtonLabel = computed(() => props.cancelButtonLabel !== 'Cancel' ? props.cancelButtonLabel : trans('forms::forms.select.cancel_button_label'))
+const translatedCreateButtonLabel = computed(() => props.createButtonLabel !== 'Create' ? props.createButtonLabel : trans('forms::forms.select.create_button_label'))
+const translatedCreatingButtonLabel = computed(() => props.creatingButtonLabel !== 'Creating...' ? props.creatingButtonLabel : trans('forms::forms.select.creating_button_label'))
+const translatedSaveChangesButtonLabel = computed(() => props.saveChangesButtonLabel !== 'Save Changes' ? props.saveChangesButtonLabel : trans('forms::forms.select.save_changes_button_label'))
+const translatedSavingButtonLabel = computed(() => props.savingButtonLabel !== 'Saving...' ? props.savingButtonLabel : trans('forms::forms.select.saving_button_label'))
+const translatedScrollForMoreLabel = computed(() => props.scrollForMoreLabel !== 'Scroll for more' ? props.scrollForMoreLabel : trans('forms::forms.select.scroll_for_more_label'))
+const translatedSearchPlaceholder = computed(() => props.searchPlaceholder !== 'Search...' ? props.searchPlaceholder : trans('forms::forms.select.search_placeholder'))
+const translatedTryAdjustingSearchLabel = computed(() => props.tryAdjustingSearchLabel !== 'Try adjusting your search' ? props.tryAdjustingSearchLabel : trans('forms::forms.select.try_adjusting_search_label'))
 
 // Component mapping for dynamic form rendering
 const componentMap: Record<string, VueComponent> = {
@@ -437,13 +443,6 @@ const currentSearch = ref('')
 const fetchOptions = async (reset: boolean = false, searchQuery?: string) => {
   if (loading.value) return
 
-  // Guard: Don't fetch if required props are missing
-  if (!props.resourceSlug || !props.fieldName) {
-    console.warn('[Select] Cannot fetch options: resourceSlug or fieldName is missing')
-    loading.value = false
-    return
-  }
-
   // Use provided search query, otherwise use current search
   const search = searchQuery !== undefined ? searchQuery : currentSearch.value
 
@@ -455,38 +454,106 @@ const fetchOptions = async (reset: boolean = false, searchQuery?: string) => {
   loading.value = true
 
   try {
-    const params = new URLSearchParams({
-      page: page.value.toString(),
-    })
+    let url: string
+    let responseData: any
 
-    if (search.trim()) {
-      params.append('search', search.trim())
+    // Check if we have a relationship search URL (for relationship selects)
+    if (props.relationshipSearchUrl) {
+      // Get current panel path from window location
+      const panelPath = window.location.pathname.split('/')[1] || 'admin'
+      const params = new URLSearchParams()
+      if (search.trim()) {
+        params.append('search', search.trim())
+      }
+      params.append('limit', '50')
+
+      url = `/${panelPath}/${props.relationshipSearchUrl}&${params.toString()}`
+
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error('Failed to fetch relationship options')
+      }
+
+      const data = await response.json()
+      responseData = {
+        options: data.options || [],
+        has_more: data.hasMore || false,
+      }
+    } else if (props.closureOptionsUrl && props.fieldName) {
+      // Closure-based options with pagination
+      const panelPath = window.location.pathname.split('/')[1] || 'admin'
+      const params = new URLSearchParams()
+      // resourceSlug is optional - backend can use field name convention as fallback
+      if (props.resourceSlug) {
+        params.append('resource', props.resourceSlug)
+      }
+      params.append('field', props.fieldName)
+      params.append('limit', '50')
+      // Calculate offset based on current options count (for pagination)
+      params.append('offset', reset ? '0' : options.value.length.toString())
+      if (search.trim()) {
+        params.append('search', search.trim())
+      }
+      // Pass relation manager class if this is inside a relation manager
+      if (props.relationManager) {
+        params.append('relationManager', props.relationManager)
+      }
+
+      url = `/${panelPath}/${props.closureOptionsUrl}?${params.toString()}`
+      console.log('[Select] Fetching URL:', url)
+
+      const response = await fetch(url)
+      console.log('[Select] Response status:', response.status, response.ok)
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[Select] Fetch failed:', errorText)
+        throw new Error('Failed to fetch closure options')
+      }
+
+      const data = await response.json()
+      console.log('[Select] Response data:', data)
+      responseData = {
+        options: data.options || [],
+        has_more: data.hasMore || false,
+      }
+    } else if (props.resourceSlug && props.fieldName) {
+      // Legacy: Use dashboard select-options endpoint
+      const params = new URLSearchParams({
+        page: page.value.toString(),
+      })
+
+      if (search.trim()) {
+        params.append('search', search.trim())
+      }
+
+      url = `/dashboard/${props.resourceSlug}/select-options/${props.fieldName}?${params}`
+
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error('Failed to fetch options')
+      }
+
+      responseData = await response.json()
+    } else {
+      // No way to fetch options
+      loading.value = false
+      return
     }
-
-    const url = `/dashboard/${props.resourceSlug}/select-options/${props.fieldName}?${params}`
-
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch options')
-    }
-
-    const data = await response.json()
 
     // Cache all option labels for selected values
-    data.options.forEach((option: Option) => {
+    responseData.options.forEach((option: Option) => {
       selectedOptionsCache.value.set(option.value, option.label)
     })
 
     if (reset) {
-      options.value = data.options
+      options.value = responseData.options
     } else {
-      options.value = [...options.value, ...data.options]
+      options.value = [...options.value, ...responseData.options]
     }
 
-    hasMore.value = data.has_more
+    hasMore.value = responseData.has_more || false
   } catch (error) {
-    console.error('[SearchableSelect] Error fetching options:', error)
+    console.error('[Select] Error fetching options:', error)
   } finally {
     loading.value = false
   }
@@ -539,11 +606,34 @@ watch(open, (isOpen) => {
     page.value = 1
     hasMore.value = false
 
-    // Only fetch if we don't have static options AND not using dependent options
-    // Dependent selects manage their own options via fetchDependentOptions
-    if (!hasStaticOptions.value && !props.optionsUrl && !props.hasDynamicOptions) {
-      // Fetch fresh data when opening
+    // Debug logging
+    console.log('[Select] Dropdown opened for field:', props.name, {
+      closureOptionsUrl: props.closureOptionsUrl,
+      fieldName: props.fieldName,
+      resourceSlug: props.resourceSlug,
+      relationshipSearchUrl: props.relationshipSearchUrl,
+      hasStaticOptions: hasStaticOptions.value,
+      optionsCount: options.value.length,
+    })
+
+    // Fetch options when opening if:
+    // 1. We have a relationship search URL (searchable relationship select)
+    // 2. We have a closure options URL (closure-based searchable select)
+    // 3. OR we don't have static options AND not using dependent options
+    if (props.relationshipSearchUrl) {
+      // Relationship select with search - fetch fresh options when opening
+      console.log('[Select] Fetching relationship options')
       fetchOptions(true, '')
+    } else if (props.closureOptionsUrl && props.fieldName) {
+      // Closure-based select with searchable options - fetch fresh options when opening
+      console.log('[Select] Fetching closure options')
+      fetchOptions(true, '')
+    } else if (!hasStaticOptions.value && !props.optionsUrl && !props.hasDynamicOptions) {
+      // Legacy: Fetch fresh data when opening
+      console.log('[Select] Fetching legacy options')
+      fetchOptions(true, '')
+    } else {
+      console.log('[Select] Not fetching options - using static options')
     }
   } else {
     // Keep options when closing - we need them to display the selected value!
@@ -739,40 +829,130 @@ const fetchSelectedOptions = async (ids: string[]) => {
 
   loading.value = true
   try {
-    const params = new URLSearchParams()
-    ids.forEach(id => params.append('ids[]', id))
+    let url: string
+    let responseOptions: Option[] = []
 
-    const url = `/dashboard/${props.resourceSlug}/select-options/${props.fieldName}?${params}`
+    // Check if we have a relationship options URL
+    if (props.relationshipOptionsUrl) {
+      // Get current panel path from window location
+      const panelPath = window.location.pathname.split('/')[1] || 'admin'
+      const params = new URLSearchParams()
+      ids.forEach(id => params.append('ids[]', id))
 
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error('Failed to fetch selected options')
+      url = `/${panelPath}/${props.relationshipOptionsUrl}&${params.toString()}`
+
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error('Failed to fetch selected relationship options')
+      }
+
+      const data = await response.json()
+      responseOptions = data.options || []
+    } else if (props.resourceSlug && props.fieldName) {
+      // Legacy endpoint
+      const params = new URLSearchParams()
+      ids.forEach(id => params.append('ids[]', id))
+
+      url = `/dashboard/${props.resourceSlug}/select-options/${props.fieldName}?${params}`
+
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error('Failed to fetch selected options')
+      }
+
+      const data = await response.json()
+      responseOptions = data.options || []
     }
 
-    const data = await response.json()
-
     // Cache all option labels
-    data.options.forEach((option: Option) => {
+    responseOptions.forEach((option: Option) => {
       selectedOptionsCache.value.set(option.value, option.label)
     })
 
     // Add these options to our options array
-    options.value = data.options
+    options.value = responseOptions
   } catch (error) {
-    console.error('[SearchableSelect] Error fetching selected options:', error)
+    console.error('[Select] Error fetching selected options:', error)
   } finally {
     loading.value = false
   }
 }
 
+// Fetch selected options by IDs for closure-based selects
+const fetchClosureSelectedOptions = async (ids: string[]) => {
+  // Only need closureOptionsUrl and fieldName - resourceSlug is optional for ID-based lookups
+  if (ids.length === 0 || !props.closureOptionsUrl || !props.fieldName) {
+    return
+  }
+
+  try {
+    const panelPath = window.location.pathname.split('/')[1] || 'admin'
+    const params = new URLSearchParams()
+    params.append('field', props.fieldName)
+    ids.forEach(id => params.append('ids[]', id))
+
+    // Pass resource context if available (for closure evaluation)
+    if (props.resourceSlug) {
+      params.append('resource', props.resourceSlug)
+    }
+    // Pass relation manager class if this is inside a relation manager
+    if (props.relationManager) {
+      params.append('relationManager', props.relationManager)
+    }
+
+    const url = `/${panelPath}/${props.closureOptionsUrl}?${params.toString()}`
+
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error('Failed to fetch closure selected options')
+    }
+
+    const data = await response.json()
+    const responseOptions: Option[] = data.options || []
+
+    // Cache and add these options to our options array
+    responseOptions.forEach((option: Option) => {
+      selectedOptionsCache.value.set(option.value, option.label)
+      // Add to options if not already there
+      if (!options.value.find(o => o.value === option.value)) {
+        options.value.push(option)
+      }
+    })
+  } catch (error) {
+    console.error('[Select] Error fetching closure selected options:', error)
+  }
+}
+
 // Check if we have static options (non-searchable/non-relationship)
+// Returns false if relationshipSearchUrl is set, even if initial options are provided
 const hasStaticOptions = computed(() => {
+  // If we have a relationship search URL, options are NOT static (they're searchable)
+  if (props.relationshipSearchUrl) {
+    return false
+  }
+  // If hasDynamicOptions is true but no dependsOn, options were pre-evaluated and passed from backend
+  // Treat them as static options
+  if (props.hasDynamicOptions && (!props.dependsOn || props.dependsOn.length === 0)) {
+    return props.options && props.options.length > 0
+  }
   return props.options && props.options.length > 0
 })
 
 // Preload initial options on mount for better UX
 onMounted(async () => {
-  if (hasStaticOptions.value) {
+  if (props.relationshipSearchUrl) {
+    // Relationship select with search
+    // Use initial options from backend if provided
+    if (props.options && props.options.length > 0) {
+      options.value = props.options
+      // Cache all option labels
+      options.value.forEach((option) => {
+        selectedOptionsCache.value.set(option.value, option.label)
+      })
+    }
+    // Note: Selected value label fetching is now handled by the watcher
+    initialLoadComplete.value = true
+  } else if (hasStaticOptions.value) {
     // Use static options provided from backend
     options.value = props.options || []
 
@@ -794,10 +974,23 @@ onMounted(async () => {
 
     initialLoadComplete.value = true
   } else {
-    // For closure-based or dependent selects, trigger fetch if dependencies are met
-    if (props.hasDynamicOptions || (props.dependsOn && props.dependsOn.length > 0)) {
-      // Don't fetch initial options - they'll be loaded when dependencies change
-      // Just mark as complete so the select can be used
+    // For closure-based selects with NO dependencies, the options are already in props
+    // They were pre-evaluated by the backend
+    if (props.hasDynamicOptions && (!props.dependsOn || props.dependsOn.length === 0)) {
+      // Use the pre-evaluated options from props
+      if (props.options && props.options.length > 0) {
+        options.value = props.options
+        options.value.forEach((option) => {
+          selectedOptionsCache.value.set(option.value, option.label)
+        })
+      }
+      // Set hasMore if backend indicates more options are available
+      hasMore.value = props.hasMoreOptions || false
+
+      // Note: Selected value label fetching is now handled by the watcher
+      initialLoadComplete.value = true
+    } else if (props.dependsOn && props.dependsOn.length > 0) {
+      // Dependent selects - wait for dependencies to trigger fetch
       initialLoadComplete.value = true
     } else if (selectedValues.value.length > 0) {
       // If there's a pre-selected value (edit mode) and it's a relationship select,
@@ -809,6 +1002,28 @@ onMounted(async () => {
     }
   }
 })
+
+// Watch for selected value changes to fetch labels
+// This is needed when the value is set after mount (e.g., in edit modals)
+// Always fetch from API to ensure we have the correct label
+watch(selectedValues, async (newValues) => {
+  if (newValues.length === 0) return
+
+  // Handle closure-based selects
+  if (props.closureOptionsUrl && props.fieldName) {
+    await fetchClosureSelectedOptions(newValues)
+    return
+  }
+
+  // Handle relationship selects
+  if (props.relationshipOptionsUrl) {
+    const missingIds = newValues.filter(id => !selectedOptionsCache.value.has(id))
+    if (missingIds.length > 0) {
+      await fetchSelectedOptions(missingIds)
+    }
+    return
+  }
+}, { deep: true, immediate: true })
 
 // Listen for field-changed events from dependent fields (for reactive selects)
 if (props.dependsOn && props.dependsOn.length > 0 && props.meta?.dependentOptions) {

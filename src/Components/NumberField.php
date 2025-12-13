@@ -43,6 +43,14 @@ class NumberField extends Field
     }
 
     /**
+     * Alias for min() - Filament compatibility.
+     */
+    public function minValue(int|float|Closure $min): static
+    {
+        return $this->min($min);
+    }
+
+    /**
      * Get minimum value.
      */
     public function getMin(): int|float|null
@@ -58,6 +66,14 @@ class NumberField extends Field
         $this->max = $max;
 
         return $this;
+    }
+
+    /**
+     * Alias for max() - Filament compatibility.
+     */
+    public function maxValue(int|float|Closure $max): static
+    {
+        return $this->max($max);
     }
 
     /**

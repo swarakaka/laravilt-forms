@@ -35,6 +35,19 @@ class ReactiveFieldController extends Controller
         $formData = $request->input('data', []);
         $changedField = $request->input('changed_field');
 
+        // Repeater context (for reactive fields inside Repeater)
+        $repeaterName = $request->input('repeater_name');
+        $repeaterIndex = $request->input('repeater_index');
+        $fieldName = $request->input('field_name');
+
+        \Log::info('[ReactiveFieldController] Update request', [
+            'controller' => $controllerClass,
+            'changedField' => $changedField,
+            'repeaterName' => $repeaterName,
+            'repeaterIndex' => $repeaterIndex,
+            'fieldName' => $fieldName,
+        ]);
+
         try {
             // Instantiate the controller
             if (! class_exists($controllerClass)) {
@@ -70,13 +83,23 @@ class ReactiveFieldController extends Controller
             // 2. Schema object directly
             // 3. Already serialized array (backward compatibility)
 
+            // Build repeater context if this is a reactive field inside a Repeater
+            $repeaterContext = null;
+            if ($repeaterName !== null && $repeaterIndex !== null && $fieldName !== null) {
+                $repeaterContext = [
+                    'repeaterName' => $repeaterName,
+                    'repeaterIndex' => (int) $repeaterIndex,
+                    'fieldName' => $fieldName,
+                ];
+            }
+
             if (is_array($schema) && count($schema) > 0) {
                 $firstItem = $schema[0] ?? null;
 
                 // If first item is a Schema object, process it
                 if (is_object($firstItem) && method_exists($firstItem, 'toLaraviltProps')) {
                     // formData is passed by reference, so afterStateUpdated callbacks will modify it
-                    $schemaData = $firstItem->toLaraviltProps($formData, null, $changedField)['schema'];
+                    $schemaData = $firstItem->toLaraviltProps($formData, null, $changedField, $repeaterContext)['schema'];
                 } else {
                     // Already serialized array
                     $schemaData = $schema;
@@ -84,7 +107,7 @@ class ReactiveFieldController extends Controller
             } elseif (is_object($schema) && method_exists($schema, 'toLaraviltProps')) {
                 // Direct Schema object
                 // formData is passed by reference, so afterStateUpdated callbacks will modify it
-                $schemaData = $schema->toLaraviltProps($formData, null, $changedField)['schema'];
+                $schemaData = $schema->toLaraviltProps($formData, null, $changedField, $repeaterContext)['schema'];
             } else {
                 // Already serialized (backward compatibility)
                 $schemaData = $schema;

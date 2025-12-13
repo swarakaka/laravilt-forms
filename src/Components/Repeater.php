@@ -35,6 +35,36 @@ class Repeater extends Field
     protected Closure|string|null $itemLabel = null;
 
     /**
+     * The resource slug for context propagation to child components.
+     */
+    protected ?string $resourceSlug = null;
+
+    /**
+     * The relation manager class for context propagation to child components.
+     */
+    protected ?string $relationManagerClass = null;
+
+    /**
+     * Set the resource slug (called by parent Schema/Resource).
+     */
+    public function resourceSlug(string $slug): static
+    {
+        $this->resourceSlug = $slug;
+
+        return $this;
+    }
+
+    /**
+     * Set the relation manager class.
+     */
+    public function relationManagerClass(string $class): static
+    {
+        $this->relationManagerClass = $class;
+
+        return $this;
+    }
+
+    /**
      * Set the field schema.
      */
     public function schema(array|Closure $schema): static
@@ -224,7 +254,18 @@ class Repeater extends Field
     protected function getVueProps(): array
     {
         // Serialize schema components to their Inertia props
+        // First, propagate context (resourceSlug, relationManagerClass) to child components
         $serializedSchema = array_map(function ($component) {
+            // Propagate resourceSlug to child components that support it
+            if ($this->resourceSlug && method_exists($component, 'resourceSlug')) {
+                $component->resourceSlug($this->resourceSlug);
+            }
+
+            // Propagate relationManagerClass to child components that support it
+            if ($this->relationManagerClass && method_exists($component, 'relationManagerClass')) {
+                $component->relationManagerClass($this->relationManagerClass);
+            }
+
             if (method_exists($component, 'toInertiaProps')) {
                 return $component->toInertiaProps();
             }
@@ -286,7 +327,18 @@ class Repeater extends Field
     public function toLaraviltProps(): array
     {
         // Serialize schema components to their Laravilt props for Blade context
+        // First, propagate context (resourceSlug, relationManagerClass) to child components
         $serializedSchema = array_map(function ($component) {
+            // Propagate resourceSlug to child components that support it
+            if ($this->resourceSlug && method_exists($component, 'resourceSlug')) {
+                $component->resourceSlug($this->resourceSlug);
+            }
+
+            // Propagate relationManagerClass to child components that support it
+            if ($this->relationManagerClass && method_exists($component, 'relationManagerClass')) {
+                $component->relationManagerClass($this->relationManagerClass);
+            }
+
             if (method_exists($component, 'toLaraviltProps')) {
                 return $component->toLaraviltProps();
             }
@@ -305,6 +357,7 @@ class Repeater extends Field
             'deletable' => $this->deletable,
             'minItems' => $this->minItems,
             'maxItems' => $this->maxItems,
+            'columns' => $this->columns,
         ]);
     }
 }

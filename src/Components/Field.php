@@ -313,6 +313,10 @@ abstract class Field extends Component
             'hintActions' => collect($this->getHintActions())->map->toArray()->filter()->values()->toArray(),
             'prefixActions' => collect($this->getPrefixActions())->map->toArray()->filter()->values()->toArray(),
             'suffixActions' => collect($this->getSuffixActions())->map->toArray()->filter()->values()->toArray(),
+            // Reactive field properties for live/lazy updates
+            'isLive' => $this->isLive(),
+            'isLazy' => $this->isLazy(),
+            'liveDebounce' => $this->getLiveDebounce(),
         ]);
     }
 }

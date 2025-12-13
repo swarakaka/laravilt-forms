@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import * as LucideIcons from 'lucide-vue-next'
 import { Plus, X, GripVertical, ChevronDown, Copy } from 'lucide-vue-next'
-import { ref, computed, Component as VueComponent, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, Component as VueComponent, watch, onMounted, onBeforeUnmount, provide, inject, markRaw, triggerRef } from 'vue'
 import Sortable from 'sortablejs'
 import TextInput from './TextInput.vue'
 import Textarea from './Textarea.vue'
@@ -11,22 +11,40 @@ import Toggle from './Toggle.vue'
 import ToggleButtons from './ToggleButtons.vue'
 import Slider from './Slider.vue'
 import DatePicker from './DatePicker.vue'
+import DateTimePicker from './DateTimePicker.vue'
+import TimePicker from './TimePicker.vue'
 import FileUpload from './FileUpload.vue'
 import CheckboxList from './CheckboxList.vue'
+import Checkbox from './Checkbox.vue'
 import Radio from './Radio.vue'
 import TagsInput from './TagsInput.vue'
 import KeyValue from './KeyValue.vue'
 import ColorPicker from './ColorPicker.vue'
 import RichEditor from './RichEditor.vue'
 import CodeEditor from './CodeEditor.vue'
+import Hidden from './Hidden.vue'
+import NumberField from './NumberField.vue'
+import IconPicker from './IconPicker.vue'
+import MarkdownEditor from './MarkdownEditor.vue'
+import PinInput from './PinInput.vue'
+import RateInput from './RateInput.vue'
 import { useLocalization } from '@/composables/useLocalization'
 
 // Initialize localization
 const { trans } = useLocalization()
 
+// Inject parent context for reactive fields
+const parentFormController = inject<string | undefined>('formController', undefined)
+const parentFormMethod = inject<string | undefined>('formMethod', 'getSchema')
+const parentGetFormData = inject<(() => Record<string, any>) | undefined>('getFormData', undefined)
+const parentUpdateSchema = inject<((schema: any[]) => void) | undefined>('updateSchema', undefined)
+
 interface FieldSchema {
   component: string
   name: string
+  isLive?: boolean
+  isLazy?: boolean
+  liveDebounce?: number
   [key: string]: any
 }
 
@@ -51,6 +69,7 @@ interface Props {
   suffixIcon?: string
   prefixIconColor?: string
   suffixIconColor?: string
+  columns?: number
   // Text labels for i18n support
   itemLabel?: string
   itemsLabel?: string
@@ -68,11 +87,56 @@ const props = withDefaults(defineProps<Props>(), {
   cloneable: false,
   deletable: true,
   disabled: false,
+  columns: undefined,
   itemLabel: 'Item',
   itemsLabel: 'item(s)',
   minLabel: 'Min:',
   maxLabel: 'Max:',
 })
+
+// Compute grid column classes based on columns prop
+const gridColumnsClass = computed(() => {
+  if (!props.columns) return ''
+  const columnMap: Record<number, string> = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2',
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+    5: 'grid-cols-5',
+    6: 'grid-cols-6',
+    7: 'grid-cols-7',
+    8: 'grid-cols-8',
+    9: 'grid-cols-9',
+    10: 'grid-cols-10',
+    11: 'grid-cols-11',
+    12: 'grid-cols-12',
+  }
+  return columnMap[props.columns] || `grid-cols-${props.columns}`
+})
+
+// Get column span class for a field
+const getColumnSpanClass = (field: FieldSchema) => {
+  if (!props.columns) return ''
+  const colSpan = field.columnSpan || field.colSpan || 1
+  if (colSpan === 'full' || field.columnSpanFull) {
+    return `col-span-full`
+  }
+  const spanMap: Record<number, string> = {
+    1: 'col-span-1',
+    2: 'col-span-2',
+    3: 'col-span-3',
+    4: 'col-span-4',
+    5: 'col-span-5',
+    6: 'col-span-6',
+    7: 'col-span-7',
+    8: 'col-span-8',
+    9: 'col-span-9',
+    10: 'col-span-10',
+    11: 'col-span-11',
+    12: 'col-span-12',
+  }
+  return spanMap[colSpan] || `col-span-${colSpan}`
+}
 
 const emit = defineEmits<{
   'update:modelValue': [value: any[]]
@@ -80,19 +144,64 @@ const emit = defineEmits<{
 }>()
 
 // Computed translated labels
-const translatedAddButtonLabel = computed(() => props.addButtonLabel !== 'Add' ? props.addButtonLabel : trans('repeater.add_button_label'))
-const translatedDeleteButtonLabel = computed(() => props.deleteButtonLabel !== 'Delete' ? props.deleteButtonLabel : trans('repeater.delete_button_label'))
-const translatedItemLabel = computed(() => props.itemLabel !== 'Item' ? props.itemLabel : trans('repeater.item_label'))
-const translatedItemsLabel = computed(() => props.itemsLabel !== 'item(s)' ? props.itemsLabel : trans('repeater.items_label'))
-const translatedMinLabel = computed(() => props.minLabel !== 'Min:' ? props.minLabel : trans('repeater.min_label'))
-const translatedMaxLabel = computed(() => props.maxLabel !== 'Max:' ? props.maxLabel : trans('repeater.max_label'))
+const translatedAddButtonLabel = computed(() => props.addButtonLabel !== 'Add' ? props.addButtonLabel : trans('forms::forms.repeater.add_button_label'))
+const translatedDeleteButtonLabel = computed(() => props.deleteButtonLabel !== 'Delete' ? props.deleteButtonLabel : trans('forms::forms.repeater.delete_button_label'))
+const translatedItemLabel = computed(() => props.itemLabel !== 'Item' ? props.itemLabel : trans('forms::forms.repeater.item_label'))
+const translatedItemsLabel = computed(() => props.itemsLabel !== 'item(s)' ? props.itemsLabel : trans('forms::forms.repeater.items_label'))
+const translatedMinLabel = computed(() => props.minLabel !== 'Min:' ? props.minLabel : trans('forms::forms.repeater.min_label'))
+const translatedMaxLabel = computed(() => props.maxLabel !== 'Max:' ? props.maxLabel : trans('forms::forms.repeater.max_label'))
 
 // Internal state for repeater items
 const internalItems = ref<any[]>([])
 
+// Version counter to force Vue reactivity updates
+const itemsVersion = ref(0)
+
+// Flag to prevent watch from re-initializing during reactive updates
+const isUpdating = ref(false)
+
+// Track pending reactive updates to prevent duplicates
+const pendingReactiveUpdate = ref<string | null>(null)
+
+// Generate stable unique IDs for each item
+const itemIds = ref<string[]>([])
+
+const generateItemId = () => `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
 // Watch for prop changes and update internal state
-watch(() => props.value ?? props.modelValue, (newValue) => {
-  internalItems.value = Array.isArray(newValue) ? [...newValue] : []
+watch(() => props.value ?? props.modelValue, (newValue, oldValue) => {
+  // Skip if we're in the middle of an internal update
+  if (isUpdating.value) {
+    console.log('[Repeater] Skipping watch - internal update in progress')
+    return
+  }
+
+  const newItems = Array.isArray(newValue) ? [...newValue] : []
+
+  // If the length changed, it's likely an external update (initial load, add, remove)
+  // If length is same but we're not updating, it could be a form reset or external change
+  const lengthChanged = newItems.length !== internalItems.value.length
+  const isInitialLoad = oldValue === undefined
+
+  if (isInitialLoad || lengthChanged) {
+    console.log('[Repeater] Watch triggered - updating items', {
+      isInitialLoad,
+      lengthChanged,
+      oldLength: internalItems.value.length,
+      newLength: newItems.length
+    })
+
+    internalItems.value = newItems
+
+    // Generate IDs for new items
+    while (itemIds.value.length < newItems.length) {
+      itemIds.value.push(generateItemId())
+    }
+    // Trim IDs if items were removed
+    if (itemIds.value.length > newItems.length) {
+      itemIds.value = itemIds.value.slice(0, newItems.length)
+    }
+  }
 }, { immediate: true })
 
 const openItems = ref<Set<number>>(new Set())
@@ -108,14 +217,23 @@ const componentMap: Record<string, VueComponent> = {
   'ToggleButtons': ToggleButtons,
   'Slider': Slider,
   'DatePicker': DatePicker,
+  'DateTimePicker': DateTimePicker,
+  'TimePicker': TimePicker,
   'FileUpload': FileUpload,
   'CheckboxList': CheckboxList,
+  'Checkbox': Checkbox,
   'Radio': Radio,
   'TagsInput': TagsInput,
   'KeyValue': KeyValue,
   'ColorPicker': ColorPicker,
   'RichEditor': RichEditor,
   'CodeEditor': CodeEditor,
+  'Hidden': Hidden,
+  'NumberField': NumberField,
+  'IconPicker': IconPicker,
+  'MarkdownEditor': MarkdownEditor,
+  'PinInput': PinInput,
+  'RateInput': RateInput,
 }
 
 // Setup drag-and-drop sorting after mount
@@ -131,12 +249,26 @@ onMounted(() => {
         const newIndex = evt.newIndex
 
         if (oldIndex !== undefined && newIndex !== undefined && oldIndex !== newIndex) {
-          const newValue = [...internalItems.value]
-          const [movedItem] = newValue.splice(oldIndex, 1)
-          newValue.splice(newIndex, 0, movedItem)
-          internalItems.value = newValue
-          emit('update:modelValue', newValue)
-          emit('update:value', newValue)
+          // Set flag to prevent watch interference
+          isUpdating.value = true
+
+          try {
+            const newValue = [...internalItems.value]
+            const [movedItem] = newValue.splice(oldIndex, 1)
+            newValue.splice(newIndex, 0, movedItem)
+            internalItems.value = newValue
+
+            // Also reorder IDs
+            const [movedId] = itemIds.value.splice(oldIndex, 1)
+            itemIds.value.splice(newIndex, 0, movedId)
+
+            emit('update:modelValue', newValue)
+            emit('update:value', newValue)
+          } finally {
+            setTimeout(() => {
+              isUpdating.value = false
+            }, 100)
+          }
         }
       },
     })
@@ -212,48 +344,78 @@ const canDeleteItem = computed(() => {
 const addItem = () => {
   if (!canAddItem.value) return
 
-  // Create new item with default values from schema
-  const newItem: Record<string, any> = {}
-  props.schema.forEach(field => {
-    newItem[field.name] = field.defaultValue ?? null
-  })
+  // Set flag to prevent watch interference
+  isUpdating.value = true
 
-  const newValue = [...internalItems.value, newItem]
-  internalItems.value = newValue
-  emit('update:modelValue', newValue)
-  emit('update:value', newValue)
+  try {
+    // Create new item with default values from schema
+    const newItem: Record<string, any> = {}
+    props.schema.forEach(field => {
+      newItem[field.name] = field.defaultValue ?? null
+    })
 
-  // Auto-expand new item if collapsible
-  if (props.collapsible) {
-    openItems.value.add(internalItems.value.length - 1)
+    const newValue = [...internalItems.value, newItem]
+    internalItems.value = newValue
+    itemIds.value.push(generateItemId())
+    emit('update:modelValue', newValue)
+    emit('update:value', newValue)
+
+    // Auto-expand new item if collapsible
+    if (props.collapsible) {
+      openItems.value.add(internalItems.value.length - 1)
+    }
+  } finally {
+    setTimeout(() => {
+      isUpdating.value = false
+    }, 100)
   }
 }
 
 const removeItem = (index: number) => {
   if (!canDeleteItem.value) return
 
-  const newValue = [...internalItems.value]
-  newValue.splice(index, 1)
-  internalItems.value = newValue
-  emit('update:modelValue', newValue)
-  emit('update:value', newValue)
-  openItems.value.delete(index)
+  // Set flag to prevent watch interference
+  isUpdating.value = true
+
+  try {
+    const newValue = [...internalItems.value]
+    newValue.splice(index, 1)
+    internalItems.value = newValue
+    itemIds.value.splice(index, 1)
+    emit('update:modelValue', newValue)
+    emit('update:value', newValue)
+    openItems.value.delete(index)
+  } finally {
+    setTimeout(() => {
+      isUpdating.value = false
+    }, 100)
+  }
 }
 
 const cloneItem = (index: number) => {
   if (!canAddItem.value) return
 
-  const itemToClone = internalItems.value[index]
-  const clonedItem = JSON.parse(JSON.stringify(itemToClone))
-  const newValue = [...internalItems.value]
-  newValue.splice(index + 1, 0, clonedItem)
-  internalItems.value = newValue
-  emit('update:modelValue', newValue)
-  emit('update:value', newValue)
+  // Set flag to prevent watch interference
+  isUpdating.value = true
 
-  // Auto-expand cloned item if collapsible
-  if (props.collapsible) {
-    openItems.value.add(index + 1)
+  try {
+    const itemToClone = internalItems.value[index]
+    const clonedItem = JSON.parse(JSON.stringify(itemToClone))
+    const newValue = [...internalItems.value]
+    newValue.splice(index + 1, 0, clonedItem)
+    internalItems.value = newValue
+    itemIds.value.splice(index + 1, 0, generateItemId())
+    emit('update:modelValue', newValue)
+    emit('update:value', newValue)
+
+    // Auto-expand cloned item if collapsible
+    if (props.collapsible) {
+      openItems.value.add(index + 1)
+    }
+  } finally {
+    setTimeout(() => {
+      isUpdating.value = false
+    }, 100)
   }
 }
 
@@ -269,22 +431,201 @@ const isOpen = (index: number) => {
   return !props.collapsible || openItems.value.has(index)
 }
 
-// Update field value within an item
-const updateFieldValue = (itemIndex: number, fieldName: string, value: any) => {
-  const newValue = [...internalItems.value]
-  newValue[itemIndex] = {
-    ...newValue[itemIndex],
-    [fieldName]: value,
+// Debug: Log schema fields on mount
+onMounted(() => {
+  console.log('[Repeater] Schema fields:', props.schema?.map(f => ({
+    name: f.name,
+    component: f.component,
+    isLive: f.isLive,
+    isLazy: f.isLazy,
+    closureOptionsUrl: f.closureOptionsUrl,
+    fieldName: f.fieldName,
+    resourceSlug: f.resourceSlug,
+  })))
+  console.log('[Repeater] Parent form controller:', parentFormController)
+  console.log('[Repeater] Repeater name:', props.name)
+})
+
+// Trigger reactive field update for live/lazy fields inside Repeater
+const triggerReactiveFieldUpdate = async (itemIndex: number, fieldName: string, field: FieldSchema) => {
+  // Skip if no form controller is configured
+  if (!parentFormController) {
+    console.warn('[Repeater] No formController configured, skipping reactive field update')
+    return
   }
-  internalItems.value = newValue
-  emit('update:modelValue', newValue)
-  emit('update:value', newValue)
+
+  // Create a unique key for this update to prevent duplicates
+  const updateKey = `${itemIndex}.${fieldName}`
+
+  // Skip if we already have a pending update for this field
+  if (pendingReactiveUpdate.value === updateKey) {
+    console.log('[Repeater] Skipping duplicate reactive update for:', updateKey)
+    return
+  }
+
+  // Mark this update as pending
+  pendingReactiveUpdate.value = updateKey
+
+  try {
+    // Get full form data from parent
+    const fullFormData = parentGetFormData ? parentGetFormData() : {}
+
+    // Update the repeater data in the form data
+    fullFormData[props.name || 'items'] = internalItems.value
+
+    // The changed field path is: repeaterName.itemIndex.fieldName
+    const changedFieldPath = `${props.name || 'items'}.${itemIndex}.${fieldName}`
+
+    console.log('[Repeater] Triggering reactive update:', {
+      controller: parentFormController,
+      method: parentFormMethod,
+      changedField: changedFieldPath,
+      data: fullFormData,
+    })
+
+    const payload = {
+      controller: parentFormController,
+      method: parentFormMethod || 'getSchema',
+      data: fullFormData,
+      changed_field: changedFieldPath,
+      repeater_name: props.name || 'items',
+      repeater_index: itemIndex,
+      field_name: fieldName,
+    }
+
+    const response = await fetch('/reactive-fields/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to update reactive fields')
+    }
+
+    const result = await response.json()
+    console.log('[Repeater] Reactive update result:', result)
+    console.log('[Repeater] Repeater name for data lookup:', props.name || 'items')
+    console.log('[Repeater] Result data items:', result.data?.[props.name || 'items'])
+    console.log('[Repeater] Item at index', itemIndex, ':', result.data?.[props.name || 'items']?.[itemIndex])
+
+    // If backend returned updated data, apply it to the repeater item
+    if (result.data) {
+      const repeaterData = result.data[props.name || 'items']
+      console.log('[Repeater] Found repeater data:', repeaterData)
+
+      if (repeaterData && Array.isArray(repeaterData) && repeaterData[itemIndex]) {
+        // Update only the specific item that was affected
+        const newItems = [...internalItems.value]
+        const updatedItem = {
+          ...newItems[itemIndex],
+          ...repeaterData[itemIndex],
+        }
+        console.log('[Repeater] Updated item:', updatedItem)
+        console.log('[Repeater] Old total_price:', newItems[itemIndex]?.total_price)
+        console.log('[Repeater] New total_price:', updatedItem.total_price)
+
+        // Update the item in place
+        newItems[itemIndex] = updatedItem
+
+        // Force Vue to detect the change by:
+        // 1. Assigning a new array reference
+        internalItems.value = [...newItems]
+
+        // 2. Incrementing version to force computed properties to re-evaluate
+        itemsVersion.value++
+
+        // 3. Trigger ref to ensure Vue picks up the change
+        triggerRef(internalItems)
+
+        console.log('[Repeater] Reactivity triggered, version:', itemsVersion.value)
+
+        // NOTE: We intentionally do NOT emit here
+        // Emitting causes the parent to re-render and recreate this component
+        // The updated data is tracked in internalItems and will be included on form submit
+        // The hidden input field ensures the data is submitted with the form
+      } else {
+        console.log('[Repeater] Could not find repeater data at index', itemIndex)
+      }
+    }
+
+    // Note: We intentionally do NOT call parentUpdateSchema for Repeater reactive updates
+    // because we're only updating data within the item, not changing the schema structure.
+    // Calling updateSchema would cause a full re-render and scroll issues.
+  } catch (error) {
+    console.error('[Repeater] Error updating reactive fields:', error)
+  } finally {
+    // Clear the pending update flag
+    pendingReactiveUpdate.value = null
+  }
+}
+
+// Update field value within an item
+const updateFieldValue = async (itemIndex: number, fieldName: string, value: any, field?: FieldSchema) => {
+  console.log('[Repeater] updateFieldValue called:', {
+    itemIndex,
+    fieldName,
+    value,
+    field: field ? { name: field.name, isLive: field.isLive, isLazy: field.isLazy } : undefined,
+  })
+
+  // Set flag to prevent watch from re-initializing during our update
+  isUpdating.value = true
+
+  try {
+    const newValue = [...internalItems.value]
+    newValue[itemIndex] = {
+      ...newValue[itemIndex],
+      [fieldName]: value,
+    }
+    internalItems.value = newValue
+
+    // Check if this field is reactive (live/lazy) and trigger update
+    if (field && (field.isLive || field.isLazy)) {
+      console.log('[Repeater] Field is live/lazy, triggering reactive update')
+      // For reactive fields, we trigger the update but DON'T emit to parent
+      // This prevents parent re-render and component remount
+      // The data is tracked internally and will be submitted via hidden input
+      await triggerReactiveFieldUpdate(itemIndex, fieldName, field)
+    } else {
+      console.log('[Repeater] Field is NOT live/lazy, emitting update')
+      // For non-reactive fields, emit normally so parent stays in sync
+      emit('update:modelValue', newValue)
+      emit('update:value', newValue)
+    }
+  } finally {
+    // Reset flag after a short delay to allow Vue to process updates
+    setTimeout(() => {
+      isUpdating.value = false
+    }, 100)
+  }
 }
 
 // Get field value from item
+// This function depends on itemsVersion to ensure Vue re-evaluates it
 const getFieldValue = (itemIndex: number, fieldName: string) => {
+  // Access version to create dependency (unused but triggers re-evaluation)
+  const _ = itemsVersion.value
   return internalItems.value[itemIndex]?.[fieldName]
 }
+
+// Get field props with reactive flags and value stripped
+// This prevents child components from triggering their own reactive updates
+// The Repeater handles reactivity at its level via updateFieldValue
+// We strip 'value' and 'modelValue' so our explicit bindings take precedence
+const getFieldProps = (field: FieldSchema) => {
+  const { isLive, isLazy, liveDebounce, label, helperText, value, modelValue, defaultValue, ...rest } = field
+  return rest
+}
+
+// Provide a null formController to child components
+// This prevents them from making their own reactive API calls
+// The Repeater handles reactivity internally
+provide('formController', undefined)
+provide('formMethod', undefined)
 </script>
 
 <template>
@@ -311,7 +652,7 @@ const getFieldValue = (itemIndex: number, fieldName: string) => {
     <div ref="itemsContainer" class="space-y-2">
       <div
         v-for="(item, index) in internalItems"
-        :key="index"
+        :key="itemIds[index] || `fallback-${index}`"
         class="group relative rounded-lg border border-border bg-card transition-colors hover:border-primary/50"
       >
         <!-- Header -->
@@ -377,39 +718,60 @@ const getFieldValue = (itemIndex: number, fieldName: string) => {
         <!-- Content (collapsible) -->
         <div
           v-if="isOpen(index)"
-          class="p-4 space-y-4"
+          class="p-4"
+          :class="columns ? `grid gap-4 ${gridColumnsClass}` : 'space-y-4'"
         >
           <!-- Render schema fields dynamically -->
-          <div
+          <template
             v-for="field in schema"
             :key="field.name"
-            class="space-y-1.5"
           >
-            <label
-              v-if="field.label"
-              :for="`${field.name}-${index}`"
-              class="text-sm font-medium block text-foreground"
-            >
-              {{ field.label }}
-              <span v-if="field.required" class="text-destructive ms-0.5">*</span>
-            </label>
-
+            <!-- Hidden fields - render without wrapper/label -->
             <component
+              v-if="field.hidden || field.component === 'Hidden' || field.component === 'hidden'"
               :is="getComponent(field.component)"
-              v-if="getComponent(field.component)"
+              :key="`${field.name}-${index}-${itemsVersion}`"
               :id="`${field.name}-${index}`"
+              :value="getFieldValue(index, field.name)"
               :model-value="getFieldValue(index, field.name)"
-              v-bind="{ ...field, label: undefined, helperText: undefined }"
-              @update:model-value="updateFieldValue(index, field.name, $event)"
+              v-bind="getFieldProps(field)"
+              @update:model-value="updateFieldValue(index, field.name, $event, field)"
             />
 
-            <p
-              v-if="field.helperText"
-              class="text-xs text-muted-foreground mt-1"
+            <!-- Visible fields - render with wrapper/label -->
+            <div
+              v-else
+              class="space-y-1.5"
+              :class="getColumnSpanClass(field)"
             >
-              {{ field.helperText }}
-            </p>
-          </div>
+              <label
+                v-if="field.label"
+                :for="`${field.name}-${index}`"
+                class="text-sm font-medium block text-foreground"
+              >
+                {{ field.label }}
+                <span v-if="field.required" class="text-destructive ms-0.5">*</span>
+              </label>
+
+              <component
+                :is="getComponent(field.component)"
+                v-if="getComponent(field.component)"
+                :key="`${field.name}-${index}-${itemsVersion}`"
+                :id="`${field.name}-${index}`"
+                :value="getFieldValue(index, field.name)"
+                :model-value="getFieldValue(index, field.name)"
+                v-bind="getFieldProps(field)"
+                @update:model-value="updateFieldValue(index, field.name, $event, field)"
+              />
+
+              <p
+                v-if="field.helperText"
+                class="text-xs text-muted-foreground mt-1"
+              >
+                {{ field.helperText }}
+              </p>
+            </div>
+          </template>
         </div>
       </div>
     </div>

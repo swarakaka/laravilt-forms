@@ -22,17 +22,7 @@ class FormValidator
         $messages = [];
 
         $components = $schema->getSchema();
-        \Log::info('FormValidator: Processing schema', [
-            'component_count' => count($components),
-            'component_types' => array_map(fn ($c) => get_class($c), $components),
-        ]);
-
         self::extractRulesFromComponents($components, $rules, $messages);
-
-        \Log::info('FormValidator: Generated rules', [
-            'rules' => $rules,
-            'messages' => $messages,
-        ]);
 
         return [
             'rules' => $rules,
@@ -54,16 +44,8 @@ class FormValidator
             // Handle Tabs component (has getTabs() method)
             if (method_exists($component, 'getTabs')) {
                 $tabs = $component->getTabs();
-                \Log::info('FormValidator: Found Tabs component', [
-                    'tab_count' => count($tabs),
-                    'tab_types' => array_map(fn ($t) => get_class($t), $tabs),
-                ]);
                 foreach ($tabs as $tab) {
                     if (method_exists($tab, 'getSchema') && $schema = $tab->getSchema()) {
-                        \Log::info('FormValidator: Processing Tab schema', [
-                            'schema_count' => count($schema),
-                            'schema_types' => array_map(fn ($s) => get_class($s), $schema),
-                        ]);
                         self::extractRulesFromComponents($schema, $rules, $messages);
                     }
                 }
@@ -83,11 +65,6 @@ class FormValidator
                 $name = $component->getName();
                 if ($name) {
                     $fieldRules = self::getFieldRules($component);
-                    \Log::info('FormValidator: Found field component', [
-                        'name' => $name,
-                        'type' => get_class($component),
-                        'rules' => $fieldRules,
-                    ]);
                     if (! empty($fieldRules)) {
                         $rules[$name] = $fieldRules;
                     }

@@ -10,8 +10,6 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   icons: () => []
 })
-
-console.log('IconPickerSimple loaded!', props)
 </script>
 
 <template>

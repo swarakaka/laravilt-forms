@@ -55,10 +55,7 @@
                     key="content"
                     :schema="tab.schema"
                     :model-value="modelValue"
-                    @update:model-value="(value) => {
-                        console.log('Tabs received update from Form:', value)
-                        emit('update:modelValue', value)
-                    }"
+                    @update:model-value="(value) => emit('update:modelValue', value)"
                 />
             </Transition>
         </TabsContent>

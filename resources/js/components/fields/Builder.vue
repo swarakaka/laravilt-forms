@@ -106,11 +106,7 @@ const emit = defineEmits<{
 // Internal state for builder items
 const internalItems = ref<BlockItem[]>([])
 
-// Debug: Log blocks prop
-console.log('Builder blocks:', props.blocks)
-console.log('Builder blocks length:', props.blocks?.length)
-
-// Watch for prop changes and update internal state
+/// Watch for prop changes and update internal state
 watch(() => props.value ?? props.modelValue, (newValue) => {
   internalItems.value = Array.isArray(newValue) ? [...newValue] : []
 }, { immediate: true })

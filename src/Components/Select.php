@@ -908,9 +908,6 @@ class Select extends Field
         try {
             // Get current panel
             $panel = \Laravilt\Panel\Facades\Panel::getCurrent();
-            \Log::info('[Select] getModelFromPanelResource', [
-                'hasPanel' => $panel !== null,
-            ]);
             if (! $panel) {
                 return null;
             }
@@ -918,28 +915,19 @@ class Select extends Field
             // Get current resource from URL
             $currentPath = request()->path();
             $pathParts = explode('/', $currentPath);
-            \Log::info('[Select] Checking path', [
-                'currentPath' => $currentPath,
-                'pathParts' => $pathParts,
-            ]);
 
             // Find resource by matching URL slug
             foreach ($panel->getResources() as $resourceClass) {
                 $slug = $resourceClass::getSlug();
                 if (in_array($slug, $pathParts)) {
                     $model = $resourceClass::getModel();
-                    \Log::info('[Select] Found matching resource', [
-                        'resourceClass' => $resourceClass,
-                        'slug' => $slug,
-                        'model' => $model,
-                    ]);
                     if ($model) {
                         return $model;
                     }
                 }
             }
         } catch (\Exception $e) {
-            \Log::warning('[Select] getModelFromPanelResource error: '.$e->getMessage());
+            // Silently fail - model lookup is optional
         }
 
         return null;

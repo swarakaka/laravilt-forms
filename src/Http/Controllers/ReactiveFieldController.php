@@ -40,14 +40,6 @@ class ReactiveFieldController extends Controller
         $repeaterIndex = $request->input('repeater_index');
         $fieldName = $request->input('field_name');
 
-        \Log::info('[ReactiveFieldController] Update request', [
-            'controller' => $controllerClass,
-            'changedField' => $changedField,
-            'repeaterName' => $repeaterName,
-            'repeaterIndex' => $repeaterIndex,
-            'fieldName' => $fieldName,
-        ]);
-
         try {
             // Instantiate the controller
             if (! class_exists($controllerClass)) {

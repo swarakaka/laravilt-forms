@@ -54,6 +54,13 @@ class ColorPicker extends Field
     protected int|Closure|null $minItems = null;
 
     /**
+     * Popup position for the color picker.
+     * Supported values: 'top', 'bottom', 'left', 'right', 'top-start', 'top-end',
+     * 'bottom-start', 'bottom-end', 'left-start', 'left-end', 'right-start', 'right-end'.
+     */
+    protected string|Closure $popupPosition = 'bottom-start';
+
+    /**
      * Enable alpha channel control.
      */
     public function alpha(bool|Closure $condition = true): static
@@ -171,6 +178,26 @@ class ColorPicker extends Field
     }
 
     /**
+     * Set the popup position for the color picker.
+     *
+     * @param  string|Closure  $position  Position value (top, bottom, left, right, top-start, etc.)
+     */
+    public function popupPosition(string|Closure $position): static
+    {
+        $this->popupPosition = $position;
+
+        return $this;
+    }
+
+    /**
+     * Get the popup position.
+     */
+    public function getPopupPosition(): string
+    {
+        return $this->evaluate($this->popupPosition);
+    }
+
+    /**
      * Serialize component for Laravilt (Blade + Vue.js).
      */
     public function toLaraviltProps(): array
@@ -183,6 +210,7 @@ class ColorPicker extends Field
             'multiple' => $this->isMultiple(),
             'maxItems' => $this->getMaxItems(),
             'minItems' => $this->getMinItems(),
+            'popupPosition' => $this->getPopupPosition(),
             'translations' => [
                 'placeholder' => __('forms::forms.color_picker.placeholder'),
                 'swatches' => __('forms::forms.color_picker.swatches'),

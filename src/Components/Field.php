@@ -59,6 +59,16 @@ abstract class Field extends Component
     protected ?Closure $afterStateUpdated = null;
 
     /**
+     * Callback to transform state before saving (dehydration).
+     */
+    protected ?Closure $dehydrateStateUsing = null;
+
+    /**
+     * Callback to transform state when loading (hydration).
+     */
+    protected ?Closure $hydrateStateUsing = null;
+
+    /**
      * Hint actions (displayed next to the label).
      */
     protected array $hintActions = [];
@@ -191,6 +201,68 @@ abstract class Field extends Component
     public function getAfterStateUpdated(): ?Closure
     {
         return $this->afterStateUpdated;
+    }
+
+    /**
+     * Set the callback to transform state before saving (dehydration).
+     * This is useful for hashing passwords, encoding data, etc.
+     */
+    public function dehydrateStateUsing(?Closure $callback): static
+    {
+        $this->dehydrateStateUsing = $callback;
+
+        return $this;
+    }
+
+    /**
+     * Get the dehydrate state callback.
+     */
+    public function getDehydrateStateUsing(): ?Closure
+    {
+        return $this->dehydrateStateUsing;
+    }
+
+    /**
+     * Dehydrate (transform) the given state value for saving.
+     */
+    public function dehydrateState(mixed $state): mixed
+    {
+        if ($this->dehydrateStateUsing) {
+            return ($this->dehydrateStateUsing)($state);
+        }
+
+        return $state;
+    }
+
+    /**
+     * Set the callback to transform state when loading (hydration).
+     * This is useful for decoding data, formatting values, etc.
+     */
+    public function hydrateStateUsing(?Closure $callback): static
+    {
+        $this->hydrateStateUsing = $callback;
+
+        return $this;
+    }
+
+    /**
+     * Get the hydrate state callback.
+     */
+    public function getHydrateStateUsing(): ?Closure
+    {
+        return $this->hydrateStateUsing;
+    }
+
+    /**
+     * Hydrate (transform) the given state value when loading.
+     */
+    public function hydrateState(mixed $state): mixed
+    {
+        if ($this->hydrateStateUsing) {
+            return ($this->hydrateStateUsing)($state);
+        }
+
+        return $state;
     }
 
     /**

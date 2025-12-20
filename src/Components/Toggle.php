@@ -36,6 +36,17 @@ class Toggle extends Field
     protected bool $inline = true;
 
     /**
+     * Set up the component with default values.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Toggle defaults to false (off state)
+        $this->default(false);
+    }
+
+    /**
      * Set whether the toggle should be displayed inline (beside its label).
      */
     public function inline(bool $condition = true): static

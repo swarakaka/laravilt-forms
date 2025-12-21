@@ -84,4 +84,12 @@ return [
         'min_items' => 'يرجى تحديد :min عنصر(عناصر) على الأقل',
         'max_items' => 'يمكنك تحديد :max عنصر(عناصر) كحد أقصى',
     ],
+
+    // CheckboxList Component
+    'checkbox_list' => [
+        'select_all' => 'تحديد الكل',
+        'select_all_permissions' => 'تحديد جميع الصلاحيات',
+        'selected' => 'محدد',
+        'search_placeholder' => 'بحث في الصلاحيات...',
+    ],
 ];

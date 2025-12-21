@@ -38,6 +38,8 @@ class TextInput extends Field
 
     protected int|float|null $step = null;
 
+    protected bool $isRevealable = false;
+
     /**
      * Set the input type.
      */
@@ -76,6 +78,24 @@ class TextInput extends Field
         $this->autocomplete = 'current-password';
 
         return $this;
+    }
+
+    /**
+     * Make the password input revealable (toggleable visibility).
+     */
+    public function revealable(bool $condition = true): static
+    {
+        $this->isRevealable = $condition;
+
+        return $this;
+    }
+
+    /**
+     * Check if the input is revealable.
+     */
+    public function isRevealable(): bool
+    {
+        return $this->isRevealable && $this->type === 'password';
     }
 
     /**
@@ -326,6 +346,7 @@ class TextInput extends Field
             'isLive' => $this->isLive(),
             'isLazy' => $this->isLazy(),
             'liveDebounce' => $this->getLiveDebounce(),
+            'isRevealable' => $this->isRevealable(),
         ]);
     }
 }

@@ -25,6 +25,7 @@ import TextInput from '../fields/TextInput.vue'
 import Textarea from '../fields/Textarea.vue'
 import Toggle from '../fields/Toggle.vue'
 import Checkbox from '../fields/Checkbox.vue'
+import CheckboxList from '../fields/CheckboxList.vue'
 import Select from '../fields/Select.vue'
 
 const props = defineProps<{
@@ -64,6 +65,7 @@ const componentMap: Record<string, any> = {
     textarea: Textarea,
     toggle: Toggle,
     checkbox: Checkbox,
+    checkbox_list: CheckboxList,
     select: Select,
     // Async loaded (for less common/heavier components)
     radio: defineAsyncComponent(() => import('../fields/Radio.vue')),

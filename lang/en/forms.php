@@ -84,4 +84,12 @@ return [
         'min_items' => 'Please select at least :min item(s)',
         'max_items' => 'You can only select up to :max item(s)',
     ],
+
+    // CheckboxList Component
+    'checkbox_list' => [
+        'select_all' => 'Select All',
+        'select_all_permissions' => 'Select All Permissions',
+        'selected' => 'selected',
+        'search_placeholder' => 'Search permissions...',
+    ],
 ];

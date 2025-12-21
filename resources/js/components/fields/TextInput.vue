@@ -67,7 +67,7 @@
                 <Input
                     :id="id || name"
                     :name="name"
-                    :type="type || 'text'"
+                    :type="actualInputType"
                     v-model="inputValue"
                     :placeholder="placeholder"
                     :required="required"
@@ -83,11 +83,27 @@
                         hasError
                             ? 'border-destructive focus-visible:ring-destructive'
                             : '',
+                        type === 'password' && isRevealable ? 'pe-10' : '',
                     ]"
                     :style="prefixText ? { paddingInlineStart: `${prefixPadding}px` } : {}"
                     :aria-invalid="hasError ? 'true' : 'false'"
                     :aria-describedby="hasError ? `${name}-error` : undefined"
                 />
+
+                <!-- Password reveal toggle button -->
+                <Button
+                    v-if="type === 'password' && isRevealable"
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    class="absolute inset-y-0 end-0 flex h-full w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                    @click="togglePasswordVisibility"
+                    :aria-label="isPasswordVisible ? 'Hide password' : 'Show password'"
+                    tabindex="-1"
+                >
+                    <EyeOff v-if="isPasswordVisible" class="h-4 w-4" />
+                    <Eye v-else class="h-4 w-4" />
+                </Button>
             </div>
 
             <!-- Suffix Actions -->
@@ -112,8 +128,10 @@
 
 <script setup lang="ts">
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import type { ComputedRef } from 'vue';
 import { computed, inject, nextTick, onMounted, ref, useSlots, watch } from 'vue';
+import { Eye, EyeOff } from 'lucide-vue-next';
 import FieldWrapper from '../FieldWrapper.vue';
 import PhoneInput from '../PhoneInput.vue';
 import ActionButton from '@laravilt/actions/components/ActionButton.vue';
@@ -169,7 +187,23 @@ const props = defineProps<{
     isLive?: boolean;
     isLazy?: boolean;
     liveDebounce?: number;
+    isRevealable?: boolean;
 }>();
+
+// Password visibility toggle for revealable password fields
+const isPasswordVisible = ref(false);
+
+// Compute actual input type (toggle between password and text when revealable)
+const actualInputType = computed(() => {
+    if (props.type === 'password' && props.isRevealable && isPasswordVisible.value) {
+        return 'text';
+    }
+    return props.type || 'text';
+});
+
+const togglePasswordVisibility = () => {
+    isPasswordVisible.value = !isPasswordVisible.value;
+};
 
 const emit = defineEmits<{
     'update:modelValue': [value: string]

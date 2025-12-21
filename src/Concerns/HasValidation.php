@@ -26,6 +26,16 @@ trait HasValidation
     }
 
     /**
+     * Add a single validation rule.
+     *
+     * @param  mixed  $rule  A validation rule (string, Rule object, or closure)
+     */
+    public function rule(mixed $rule): static
+    {
+        return $this->addRules([$rule]);
+    }
+
+    /**
      * Add validation rules to existing ones.
      */
     public function addRules(string|array $rules): static
@@ -187,6 +197,11 @@ trait HasValidation
     public function confirmed(): static
     {
         return $this->addRules('confirmed');
+    }
+
+    public function same(string $field): static
+    {
+        return $this->addRules("same:{$field}");
     }
 
     public function regex(string $pattern): static

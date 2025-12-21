@@ -163,8 +163,8 @@ const pendingRemovalTtlMs = 2000
 const pendingEditReplacements = new Map<string, string>() // Maps old serverId to new serverId after edit
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const log = (_message: string, _payload?: unknown) => {
-  // Disabled for production
+const log = (message: string, payload?: unknown) => {
+  // console.log(`[FileUpload] ${message}`, payload)
 }
 
 // Helper to get Lucide icon component by name

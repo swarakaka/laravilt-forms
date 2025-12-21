@@ -63,6 +63,7 @@
 import { ref, defineAsyncComponent } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import * as LucideIcons from 'lucide-vue-next'
+import CheckboxList from '../fields/CheckboxList.vue'
 
 const props = defineProps<{
     heading?: string
@@ -110,6 +111,7 @@ const componentMap: Record<string, any> = {
     textarea: defineAsyncComponent(() => import('../fields/Textarea.vue')),
     select: defineAsyncComponent(() => import('../fields/Select.vue')),
     checkbox: defineAsyncComponent(() => import('../fields/Checkbox.vue')),
+    checkbox_list: CheckboxList,
     radio: defineAsyncComponent(() => import('../fields/Radio.vue')),
     toggle: defineAsyncComponent(() => import('../fields/Toggle.vue')),
     toggle_buttons: defineAsyncComponent(() => import('../fields/ToggleButtons.vue')),
@@ -149,12 +151,24 @@ const isSchemaComponent = (component: any) => {
 }
 
 const handleComponentUpdate = (component: any, value: any) => {
+    console.log('[Section] handleComponentUpdate', {
+        componentName: component.name,
+        componentType: component.component,
+        isSchemaComponent: isSchemaComponent(component),
+        value,
+        currentModelValue: props.modelValue
+    })
+
     if (isSchemaComponent(component)) {
         // For schema components, merge the entire value object
-        emit('update:modelValue', { ...props.modelValue, ...value })
+        const newValue = { ...props.modelValue, ...value }
+        console.log('[Section] Emitting schema component update:', newValue)
+        emit('update:modelValue', newValue)
     } else {
         // For regular fields, update the specific field
-        emit('update:modelValue', { ...props.modelValue, [component.name]: value })
+        const newValue = { ...props.modelValue, [component.name]: value }
+        console.log('[Section] Emitting field update:', newValue)
+        emit('update:modelValue', newValue)
     }
 }
 </script>

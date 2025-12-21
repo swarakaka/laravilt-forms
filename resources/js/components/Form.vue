@@ -48,6 +48,7 @@ import TextInput from './fields/TextInput.vue'
 import Textarea from './fields/Textarea.vue'
 import Toggle from './fields/Toggle.vue'
 import Checkbox from './fields/Checkbox.vue'
+import CheckboxList from './fields/CheckboxList.vue'
 import Select from './fields/Select.vue'
 import Hidden from './fields/Hidden.vue'
 
@@ -548,6 +549,9 @@ const componentMap: Record<string, any> = {
     checkbox: Checkbox,
     select: Select,
     hidden: Hidden,
+
+    // CheckboxList - direct import for proper event handling
+    checkbox_list: CheckboxList,
 
     // Less common/heavier components (async loaded)
     radio: defineAsyncComponent(() => import('./fields/Radio.vue')),

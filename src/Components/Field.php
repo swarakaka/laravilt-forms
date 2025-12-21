@@ -64,6 +64,11 @@ abstract class Field extends Component
     protected ?Closure $dehydrateStateUsing = null;
 
     /**
+     * Whether the field should be dehydrated (included when saving).
+     */
+    protected bool|Closure $shouldDehydrate = true;
+
+    /**
      * Callback to transform state when loading (hydration).
      */
     protected ?Closure $hydrateStateUsing = null;
@@ -220,6 +225,29 @@ abstract class Field extends Component
     public function getDehydrateStateUsing(): ?Closure
     {
         return $this->dehydrateStateUsing;
+    }
+
+    /**
+     * Set whether the field should be dehydrated (included when saving).
+     * Pass a boolean or a closure that receives the current state.
+     */
+    public function dehydrated(bool|Closure $condition = true): static
+    {
+        $this->shouldDehydrate = $condition;
+
+        return $this;
+    }
+
+    /**
+     * Check if the field should be dehydrated.
+     */
+    public function isDehydrated(?string $state = null): bool
+    {
+        if ($this->shouldDehydrate instanceof Closure) {
+            return (bool) ($this->shouldDehydrate)($state);
+        }
+
+        return $this->shouldDehydrate;
     }
 
     /**

@@ -58,39 +58,13 @@ const getComponentProps = (component: any) => {
     return rest
 }
 
-// Common components loaded directly, heavy/rare components loaded async
-const componentMap: Record<string, any> = {
-    // Directly imported (fast load)
-    text_input: TextInput,
-    textarea: Textarea,
-    toggle: Toggle,
-    checkbox: Checkbox,
-    checkbox_list: CheckboxList,
-    select: Select,
-    // Async loaded (for less common/heavier components)
-    radio: defineAsyncComponent(() => import('../fields/Radio.vue')),
-    toggle_buttons: defineAsyncComponent(() => import('../fields/ToggleButtons.vue')),
-    date_picker: defineAsyncComponent(() => import('../fields/DatePicker.vue')),
-    time_picker: defineAsyncComponent(() => import('../fields/TimePicker.vue')),
-    date_time_picker: defineAsyncComponent(() => import('../fields/DateTimePicker.vue')),
-    date_range_picker: defineAsyncComponent(() => import('../fields/DateRangePicker.vue')),
-    color_picker: defineAsyncComponent(() => import('../fields/ColorPicker.vue')),
-    file_upload: defineAsyncComponent(() => import('../fields/FileUpload.vue')),
-    rich_editor: defineAsyncComponent(() => import('../fields/RichEditor.vue')),
-    markdown_editor: defineAsyncComponent(() => import('../fields/MarkdownEditor.vue')),
-    tags_input: defineAsyncComponent(() => import('../fields/TagsInput.vue')),
-    key_value: defineAsyncComponent(() => import('../fields/KeyValue.vue')),
-    repeater: defineAsyncComponent(() => import('../fields/Repeater.vue')),
-    builder: defineAsyncComponent(() => import('../fields/Builder.vue')),
-    icon_picker: defineAsyncComponent(() => import('../fields/IconPicker.vue')),
-    number_field: defineAsyncComponent(() => import('../fields/NumberField.vue')),
-    pin_input: defineAsyncComponent(() => import('../fields/PinInput.vue')),
-    rate_input: defineAsyncComponent(() => import('../fields/RateInput.vue')),
+const toLaraviltName = (name: any) => {
+  if (!name) return
+  return 'laravilt-' + name.replaceAll('_', '-')
 }
 
 const getComponent = (component: any) => {
-    const type = component.component || 'div'
-    return componentMap[type] || 'div'
+  return toLaraviltName(component.component) || 'div'
 }
 
 const gridClasses = computed(() => {

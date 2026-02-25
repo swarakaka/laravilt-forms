@@ -533,53 +533,13 @@ const containerClass = computed(() => {
     return 'space-y-6'
 })
 
-
-// Map component types to their Vue components
-// Common components are imported directly for fast load, rare/heavy components are async
-const componentMap: Record<string, any> = {
-    // Schema layout components (directly imported)
-    grid: Grid,
-    section: Section,
-    tabs: defineAsyncComponent(() => import('./schema/Tabs.vue')),
-
-    // Common form field components (directly imported for fast modal load)
-    text_input: TextInput,
-    textarea: Textarea,
-    toggle: Toggle,
-    checkbox: Checkbox,
-    select: Select,
-    hidden: Hidden,
-
-    // CheckboxList - direct import for proper event handling
-    checkbox_list: CheckboxList,
-
-    // Less common/heavier components (async loaded)
-    radio: defineAsyncComponent(() => import('./fields/Radio.vue')),
-    toggle_buttons: defineAsyncComponent(() => import('./fields/ToggleButtons.vue')),
-    date_picker: defineAsyncComponent(() => import('./fields/DatePicker.vue')),
-    time_picker: defineAsyncComponent(() => import('./fields/TimePicker.vue')),
-    date_time_picker: defineAsyncComponent(() => import('./fields/DateTimePicker.vue')),
-    date_range_picker: defineAsyncComponent(() => import('./fields/DateRangePicker.vue')),
-    color_picker: defineAsyncComponent(() => import('./fields/ColorPicker.vue')),
-    file_upload: defineAsyncComponent(() => import('./fields/FileUpload.vue')),
-    rich_editor: defineAsyncComponent(() => import('./fields/RichEditor.vue')),
-    markdown_editor: defineAsyncComponent(() => import('./fields/MarkdownEditor.vue')),
-    tags_input: defineAsyncComponent(() => import('./fields/TagsInput.vue')),
-    key_value: defineAsyncComponent(() => import('./fields/KeyValue.vue')),
-    repeater: defineAsyncComponent(() => import('./fields/Repeater.vue')),
-    builder: defineAsyncComponent(() => import('./fields/Builder.vue')),
-    icon_picker: defineAsyncComponent(() => import('./fields/IconPicker.vue')),
-    number_field: defineAsyncComponent(() => import('./fields/NumberField.vue')),
-    pin_input: defineAsyncComponent(() => import('./fields/PinInput.vue')),
-    rate_input: defineAsyncComponent(() => import('./fields/RateInput.vue')),
+const toLaraviltName = (name: any) => {
+  if (!name) return
+  return 'laravilt-' + name.replaceAll('_', '-')
 }
 
 const getComponent = (component: any) => {
-    // Get component type from the component object
-    const type = component.component || 'div'
-
-    // Return the mapped component or a div fallback
-    return componentMap[type] || 'div'
+  return toLaraviltName(component.component) || 'div'
 }
 
 // Get component props, excluding value, modelValue, and disabled since we set them explicitly
